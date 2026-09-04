@@ -2,10 +2,12 @@ import { useState } from "react";
 
 function App() {
   const [video, setVideo] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
   const [message, setMessage] = useState("");
 
   const handleVideoChange = (event) => {
     setVideo(event.target.files[0]);
+    setAnalysis(null);
     setMessage("");
   };
 
@@ -18,7 +20,7 @@ function App() {
     const formData = new FormData();
     formData.append("video", video);
 
-    setMessage("Uploading video...");
+    setMessage("Uploading and analyzing video...");
 
     try {
       const response = await fetch(
@@ -33,6 +35,7 @@ function App() {
 
       if (response.ok) {
         setMessage(data.message);
+        setAnalysis(data.analysis);
       } else {
         setMessage(data.error);
       }
@@ -70,11 +73,36 @@ function App() {
           )}
 
           <button onClick={uploadVideo}>
-            Upload Video
+            Upload & Analyze Video
           </button>
 
           {message && <p>{message}</p>}
         </section>
+
+        {analysis && (
+          <section>
+            <h2>Video Analysis</h2>
+
+            <p>
+              <strong>Duration:</strong>{" "}
+              {analysis.duration_seconds} seconds
+            </p>
+
+            <p>
+              <strong>FPS:</strong> {analysis.fps}
+            </p>
+
+            <p>
+              <strong>Total Frames:</strong>{" "}
+              {analysis.frame_count}
+            </p>
+
+            <p>
+              <strong>Resolution:</strong>{" "}
+              {analysis.width} × {analysis.height}
+            </p>
+          </section>
+        )}
 
         <section>
           <h2>What BatVision Does</h2>

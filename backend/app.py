@@ -1,3 +1,4 @@
+from video_analysis import analyze_video
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
@@ -17,6 +18,30 @@ def home():
 
 
 @app.route("/api/upload", methods=["POST"])
+def upload_video():
+
+    if "video" not in request.files:
+        return jsonify({"error": "No video uploaded"}), 400
+
+    video = request.files["video"]
+
+    if video.filename == "":
+        return jsonify({"error": "No video selected"}), 400
+
+    file_path = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        video.filename
+    )
+
+    video.save(file_path)
+
+    analysis = analyze_video(file_path)
+
+    return jsonify({
+        "message": "Video uploaded and analyzed successfully!",
+        "filename": video.filename,
+        "analysis": analysis
+    })
 def upload_video():
 
     if "video" not in request.files:
