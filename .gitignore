@@ -4,3 +4,6 @@ frontend/node_modules/
 uploads/
 processed/
 .env
+*.pt
+frontend/dist/
+dist/

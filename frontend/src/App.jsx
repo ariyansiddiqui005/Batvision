@@ -101,6 +101,30 @@ function App() {
               <strong>Resolution:</strong>{" "}
               {analysis.width} × {analysis.height}
             </p>
+
+            {analysis.yolo_detection && (
+              <div style={{ marginTop: "16px", padding: "14px", border: "1px solid var(--border)", borderRadius: "8px", textAlign: "left", maxWidth: "420px", margin: "16px auto 0" }}>
+                <h3 style={{ margin: "0 0 10px 0" }}>🤖 YOLO Player Detection</h3>
+                <p>
+                  <strong>Model:</strong> {analysis.yolo_detection.model}
+                </p>
+                <p>
+                  <strong>Sampled Frames Analyzed:</strong> {analysis.yolo_detection.frames_analyzed}
+                </p>
+                <p>
+                  <strong>Max Players in Frame:</strong> {analysis.yolo_detection.max_players_detected}
+                </p>
+                <p>
+                  <strong>Avg Players per Frame:</strong> {analysis.yolo_detection.avg_players_detected}
+                </p>
+                <p>
+                  <strong>Player Consistency:</strong> {analysis.yolo_detection.detection_consistency_percent}%
+                </p>
+                <p style={{ marginTop: "8px", color: "#10b981", fontWeight: "bold" }}>
+                  ✔ {analysis.yolo_detection.status}
+                </p>
+              </div>
+            )}
           </section>
         )}
 

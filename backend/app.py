@@ -42,27 +42,6 @@ def upload_video():
         "filename": video.filename,
         "analysis": analysis
     })
-def upload_video():
-
-    if "video" not in request.files:
-        return jsonify({"error": "No video uploaded"}), 400
-
-    video = request.files["video"]
-
-    if video.filename == "":
-        return jsonify({"error": "No video selected"}), 400
-
-    file_path = os.path.join(
-        app.config["UPLOAD_FOLDER"],
-        video.filename
-    )
-
-    video.save(file_path)
-
-    return jsonify({
-        "message": "Video uploaded successfully!",
-        "filename": video.filename
-    })
 
 
 if __name__ == "__main__":
