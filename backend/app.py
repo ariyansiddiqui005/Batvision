@@ -28,6 +28,11 @@ def upload_video():
     if video.filename == "":
         return jsonify({"error": "No video selected"}), 400
 
+    # Read and validate user-selected analysis type (batting vs. bowling)
+    analysis_type = request.form.get("analysis_type", "batting").lower().strip()
+    if analysis_type not in ["batting", "bowling"]:
+        return jsonify({"error": "Invalid analysis_type. Must be 'batting' or 'bowling'"}), 400
+
     file_path = os.path.join(
         app.config["UPLOAD_FOLDER"],
         video.filename
@@ -35,11 +40,12 @@ def upload_video():
 
     video.save(file_path)
 
-    analysis = analyze_video(file_path)
+    analysis = analyze_video(file_path, analysis_type=analysis_type)
 
     return jsonify({
-        "message": "Video uploaded and analyzed successfully!",
+        "message": f"Video uploaded and analyzed successfully as {analysis_type}!",
         "filename": video.filename,
+        "analysis_type": analysis_type,
         "analysis": analysis
     })
 
