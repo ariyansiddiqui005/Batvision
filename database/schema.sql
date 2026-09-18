@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS players (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(120) UNIQUE,
+    password VARCHAR(255) NULL,
     age INT DEFAULT 20,
     role ENUM('Batsman', 'Bowler', 'All-Rounder') DEFAULT 'All-Rounder',
     batting_style VARCHAR(50) DEFAULT 'Right Hand Bat',
@@ -61,6 +62,7 @@ CREATE TABLE IF NOT EXISTS scouts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(120) UNIQUE NOT NULL,
+    password VARCHAR(255) NULL,
     organization VARCHAR(150) DEFAULT 'State Cricket Academy',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -1,6 +1,7 @@
 from video_analysis import analyze_video
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from werkzeug.security import check_password_hash
 import os
 import db
 
@@ -87,70 +88,78 @@ def toggle_shortlist():
 
 @app.route("/api/login", methods=["POST"])
 def login():
-    """Authenticates a player or scout by email and returns their profile and scores."""
+    """Authenticates a player or scout by email and password, returning their profile and scores."""
     data = request.json or {}
     email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
     role = data.get("role", "player")
 
     if not email:
-        return jsonify({"error": "Email is required"}), 400
+        return jsonify({"error": "Email is required."}), 400
+    if not password:
+        return jsonify({"error": "Password is required."}), 400
 
     if role == "player":
         res = db.get_player_by_email(email)
-        if res:
-            return jsonify({
-                "message": f"Welcome back, {res['player']['name']}!",
-                "user": {
-                    "id": res["player"]["id"],
-                    "name": res["player"]["name"],
-                    "email": res["player"]["email"],
-                    "role": "player",
-                    "age": res["player"]["age"],
-                    "playerRole": res["player"]["role"],
-                    "location": res["player"]["location"],
-                    "battingStyle": res["player"]["battingStyle"],
-                    "bowlingStyle": res["player"]["bowlingStyle"]
-                },
-                "scores": res["scores"]
-            })
-        else:
-            # If not in DB, use user's email prefix or create profile
-            display_name = email.split("@")[0].replace(".", " ").title()
-            return jsonify({
-                "message": f"Logged in as {display_name}",
-                "user": {
-                    "id": f"p-{abs(hash(email)) % 10000}",
-                    "name": display_name,
-                    "email": email,
-                    "role": "player",
-                    "age": 20,
-                    "playerRole": "All-Rounder",
-                    "location": "India",
-                    "battingStyle": "Right Hand Bat",
-                    "bowlingStyle": "Right Arm Fast"
-                },
-                "scores": {"batting": None, "bowling": None}
-            })
+        if not res or not res.get("player"):
+            return jsonify({"error": "Account not found. Please register first."}), 401
+
+        player_data = res["player"]
+        stored_pw = player_data.get("password")
+
+        is_valid = False
+        if stored_pw:
+            try:
+                is_valid = check_password_hash(stored_pw, password) or (stored_pw == password)
+            except Exception:
+                is_valid = (stored_pw == password)
+
+        if not is_valid:
+            return jsonify({"error": "Incorrect password. Please try again."}), 401
+
+        return jsonify({
+            "message": f"Welcome back, {player_data['name']}!",
+            "user": {
+                "id": player_data["id"],
+                "name": player_data["name"],
+                "email": player_data["email"],
+                "role": "player",
+                "age": player_data.get("age", 20),
+                "playerRole": player_data.get("role", "All-Rounder"),
+                "location": player_data.get("location", "India"),
+                "battingStyle": player_data.get("battingStyle", "Right Hand Bat"),
+                "bowlingStyle": player_data.get("bowlingStyle", "Right Arm Fast")
+            },
+            "scores": res.get("scores", {"batting": None, "bowling": None})
+        })
     else:
         # Scout login
         res = db.get_scout_by_email(email)
-        if res:
-            return jsonify({
-                "message": f"Welcome back, {res['name']}!",
-                "user": res
-            })
-        else:
-            scout_name = email.split("@")[0].replace(".", " ").title()
-            return jsonify({
-                "message": f"Welcome, {scout_name}!",
-                "user": {
-                    "id": f"s-{abs(hash(email)) % 10000}",
-                    "name": scout_name,
-                    "email": email,
-                    "role": "scout",
-                    "organization": "State Cricket Academy"
-                }
-            })
+        if not res:
+            return jsonify({"error": "Account not found. Please register first."}), 401
+
+        stored_pw = res.get("password")
+
+        is_valid = False
+        if stored_pw:
+            try:
+                is_valid = check_password_hash(stored_pw, password) or (stored_pw == password)
+            except Exception:
+                is_valid = (stored_pw == password)
+
+        if not is_valid:
+            return jsonify({"error": "Incorrect password. Please try again."}), 401
+
+        return jsonify({
+            "message": f"Welcome back, {res['name']}!",
+            "user": {
+                "id": res["id"],
+                "name": res["name"],
+                "email": res["email"],
+                "role": "scout",
+                "organization": res.get("organization", "State Cricket Academy")
+            }
+        })
 
 
 @app.route("/api/upload", methods=["POST"])

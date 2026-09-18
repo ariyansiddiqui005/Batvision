@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { MapPin, Calendar, Check, ArrowRight } from "lucide-react";
+import AnimatedCard from "./ui/AnimatedCard";
 
 function Trials() {
   const [registeredTrials, setRegisteredTrials] = useState([]);
@@ -48,73 +50,107 @@ function Trials() {
   };
 
   return (
-    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "36px 20px" }}>
-      <div style={{ marginBottom: "32px" }}>
-        <div style={{ display: "inline-block", background: "rgba(16, 185, 129, 0.1)", color: "#059669", padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
-          🏆 Official Tryouts
-        </div>
-        <h2 style={{ margin: 0, fontSize: "32px", color: "#0f172a" }}>Cricket Trials & Talent Showcases</h2>
-        <p style={{ margin: "6px 0 0 0", color: "#64748b", fontSize: "14px" }}>
-          Verified talent opportunities posted by cricket academies, state associations, and club scouts.
+    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "40px 24px 80px 24px" }}>
+      <div style={{ marginBottom: "32px", borderBottom: "1px solid var(--border)", paddingBottom: "16px" }}>
+        <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent-dark)" }}>
+          Academy Combines
+        </span>
+        <h1 style={{ fontSize: "30px", fontWeight: "900", color: "var(--text-h)", marginTop: "4px" }}>
+          TRIALS & TALENT COMBINES
+        </h1>
+        <p style={{ fontSize: "14px", color: "var(--text-muted)", marginTop: "4px" }}>
+          Scheduled selection trials conducted by affiliated state academies and franchise scouts.
         </p>
       </div>
 
-      <div style={{ display: "grid", gap: "24px" }}>
-        {trialsData.map((trial) => {
+      <div style={{ display: "grid", gap: "20px" }}>
+        {trialsData.map((trial, idx) => {
           const isRegistered = registeredTrials.includes(trial.id);
 
           return (
-            <div
+            <AnimatedCard
               key={trial.id}
-              className="glass-card glass-card-hover"
+              delay={idx * 0.05}
+              className="sports-card"
               style={{
-                padding: "28px",
+                padding: "24px",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
                 flexWrap: "wrap",
                 gap: "20px",
-                borderLeft: "4px solid #10b981",
               }}
             >
-              <div style={{ flex: "1 1 360px" }}>
-                <div style={{ display: "inline-block", background: "rgba(16, 185, 129, 0.12)", color: "#059669", padding: "3px 12px", borderRadius: "12px", fontSize: "11px", fontWeight: "700", marginBottom: "10px" }}>
-                  {trial.organizer}
-                </div>
-                <h3 style={{ margin: "0 0 6px 0", fontSize: "20px", color: "#0f172a" }}>{trial.title}</h3>
-                <p style={{ margin: "0 0 14px 0", fontSize: "13px", color: "#64748b" }}>
-                  📍 {trial.location} • 📅 Date: <strong style={{ color: "#0f172a" }}>{trial.date}</strong>
-                </p>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", fontSize: "12px" }}>
-                  <span style={{ background: "rgba(241, 245, 249, 0.8)", border: "1px solid var(--border)", padding: "4px 12px", borderRadius: "6px", color: "#475569" }}>
-                    🎯 Roles: <strong>{trial.targetRoles}</strong>
+              <div style={{ flex: "1 1 380px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "700",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      color: "var(--accent-dark)",
+                      background: "var(--accent-subtle)",
+                      padding: "2px 6px",
+                      borderRadius: "3px",
+                      border: "1px solid var(--accent-border)",
+                    }}
+                  >
+                    {trial.organizer}
                   </span>
-                  <span style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "4px 12px", borderRadius: "6px", color: "#059669" }}>
-                    ⭐ Requirement: <strong>{trial.minScore}</strong>
+                  <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                    • Capacity: {trial.slots}
+                  </span>
+                </div>
+
+                <h3 style={{ fontSize: "19px", fontWeight: "800", color: "var(--text-h)", marginBottom: "8px" }}>
+                  {trial.title}
+                </h3>
+
+                <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "13px", color: "var(--text)", marginBottom: "14px" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    <MapPin size={13} color="var(--text-muted)" /> {trial.location}
+                  </span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    <Calendar size={13} color="var(--text-muted)" /> <strong>{trial.date}</strong>
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", fontSize: "12px" }}>
+                  <span style={{ background: "var(--surface-subtle)", border: "1px solid var(--border)", padding: "3px 8px", borderRadius: "4px", color: "var(--text)" }}>
+                    Target: <strong>{trial.targetRoles}</strong>
+                  </span>
+                  <span style={{ background: "var(--accent-subtle)", border: "1px solid var(--accent-border)", padding: "3px 8px", borderRadius: "4px", color: "var(--accent-dark)" }}>
+                    Threshold: <strong>{trial.minScore}</strong>
                   </span>
                 </div>
               </div>
 
               <div style={{ textAlign: "right" }}>
-                <p style={{ margin: "0 0 10px 0", fontSize: "12px", color: "#94a3b8" }}>
-                  Deadline: {trial.deadline}
-                </p>
+                <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "8px" }}>
+                  Application Deadline: <strong>{trial.deadline}</strong>
+                </div>
+
                 <button
                   onClick={() => handleRegister(trial.id)}
-                  className={isRegistered ? "btn-glass" : "btn-green"}
+                  className={isRegistered ? "btn-secondary" : "btn-primary"}
                   style={{
-                    padding: "11px 24px",
-                    fontSize: "14px",
-                    background: isRegistered ? "rgba(16, 185, 129, 0.15)" : undefined,
-                    color: isRegistered ? "#059669" : undefined,
-                    borderColor: isRegistered ? "#10b981" : undefined,
+                    padding: "9px 18px",
+                    fontSize: "13px",
                   }}
                 >
-                  {isRegistered ? "✓ Registered / Applied" : "Express Interest / Apply"}
+                  {isRegistered ? (
+                    <>
+                      <Check size={14} /> Registered / Applied
+                    </>
+                  ) : (
+                    <>
+                      Apply for Trial <ArrowRight size={13} />
+                    </>
+                  )}
                 </button>
               </div>
-            </div>
+            </AnimatedCard>
           );
         })}
       </div>

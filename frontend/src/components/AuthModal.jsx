@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { X, ArrowRight, Loader2, User, Search } from "lucide-react";
 
 function AuthModal({ isOpen, onClose, initialRole = "player", onLoginSuccess, authReason = "" }) {
   const [selectedRole, setSelectedRole] = useState(initialRole); // "player" | "scout"
@@ -17,8 +19,6 @@ function AuthModal({ isOpen, onClose, initialRole = "player", onLoginSuccess, au
   const [errorMessage, setErrorMessage] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,7 +41,7 @@ function AuthModal({ isOpen, onClose, initialRole = "player", onLoginSuccess, au
         const res = await fetch("http://127.0.0.1:5000/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim(), password, role: selectedRole })
+          body: JSON.stringify({ email: email.trim(), password, role: selectedRole }),
         });
         const data = await res.json();
         setIsLoading(false);
@@ -56,23 +56,7 @@ function AuthModal({ isOpen, onClose, initialRole = "player", onLoginSuccess, au
         }
       } catch (err) {
         setIsLoading(false);
-        console.error("Login request error:", err);
-        // Fallback if backend offline
-        const cleanName = email.split("@")[0].replace(".", " ").replace(/\b\w/g, (c) => c.toUpperCase());
-        const fallbackUser = {
-          id: `u-${Date.now()}`,
-          email: email.trim(),
-          name: cleanName,
-          role: selectedRole,
-          age: selectedRole === "player" ? age : 42,
-          location,
-          playerRole: selectedRole === "player" ? playerRole : null,
-          battingStyle: selectedRole === "player" ? battingStyle : null,
-          bowlingStyle: selectedRole === "player" ? bowlingStyle : null,
-          organization: selectedRole === "scout" ? organization : null,
-        };
-        onLoginSuccess(fallbackUser, null);
-        onClose();
+        setErrorMessage("Unable to connect to BatVision authentication server. Please ensure the backend is running.");
         return;
       }
     }
@@ -84,16 +68,17 @@ function AuthModal({ isOpen, onClose, initialRole = "player", onLoginSuccess, au
         const payload = {
           name: name.trim(),
           email: email.trim(),
+          password,
           age: Number(age),
           role: playerRole,
           battingStyle,
           bowlingStyle,
-          location
+          location,
         };
         const res = await fetch("http://127.0.0.1:5000/api/players", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (data && data.player_id) {
@@ -103,12 +88,13 @@ function AuthModal({ isOpen, onClose, initialRole = "player", onLoginSuccess, au
         const payload = {
           name: name.trim(),
           email: email.trim(),
-          organization: organization.trim() || "State Cricket Academy"
+          password,
+          organization: organization.trim() || "State Cricket Academy",
         };
         const res = await fetch("http://127.0.0.1:5000/api/scouts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (data && data.scout_id) {
@@ -134,315 +120,355 @@ function AuthModal({ isOpen, onClose, initialRole = "player", onLoginSuccess, au
       onClose();
     } catch (err) {
       setIsLoading(false);
-      const newUser = {
-        id: `u-${Date.now()}`,
-        email: email.trim(),
-        name: name.trim(),
-        role: selectedRole,
-        age: selectedRole === "player" ? Number(age) : 42,
-        location,
-        playerRole: selectedRole === "player" ? playerRole : null,
-        battingStyle: selectedRole === "player" ? battingStyle : null,
-        bowlingStyle: selectedRole === "player" ? bowlingStyle : null,
-        organization: selectedRole === "scout" ? organization : null,
-      };
-      onLoginSuccess(newUser, null);
-      onClose();
+      setErrorMessage("Registration failed: Unable to connect to BatVision server.");
     }
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(15, 23, 42, 0.45)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px",
-        zIndex: 1000,
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="glass-card"
-        style={{
-          maxWidth: "480px",
-          width: "100%",
-          padding: "32px",
-          background: "rgba(255, 255, 255, 0.95)",
-          boxShadow: "0 20px 50px rgba(0, 0, 0, 0.15)",
-          textAlign: "left",
-          position: "relative",
-          maxHeight: "90vh",
-          overflowY: "auto",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Close Button */}
-        <button
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(9, 13, 22, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            zIndex: 1000,
+          }}
           onClick={onClose}
-          style={{
-            position: "absolute",
-            top: "20px",
-            right: "20px",
-            background: "transparent",
-            border: "none",
-            fontSize: "20px",
-            cursor: "pointer",
-            color: "#64748b",
-          }}
         >
-          ✕
-        </button>
-
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <div style={{ fontSize: "36px", marginBottom: "6px" }}>
-            {selectedRole === "player" ? "🏏" : "🔎"}
-          </div>
-          <h2 style={{ margin: "0 0 6px 0", fontSize: "24px", color: "#0f172a" }}>
-            {authMode === "login" ? "Sign In to BatVision" : "Create Your Profile"}
-          </h2>
-          {authReason && (
-            <p style={{ margin: "0 0 10px 0", fontSize: "13px", color: "#059669", fontWeight: "600" }}>
-              {authReason}
-            </p>
-          )}
-          <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>
-            Access verified AI cricket scouting, player analytics & talent feeds
-          </p>
-        </div>
-
-        {/* Role Selector Tabs (Player vs Scout) */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "8px",
-            background: "rgba(241, 245, 249, 0.8)",
-            padding: "4px",
-            borderRadius: "10px",
-            marginBottom: "20px",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setSelectedRole("player")}
+          <motion.div
+            data-lenis-prevent="true"
+            initial={{ scale: 0.96, opacity: 0, y: 10 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.96, opacity: 0, y: 10 }}
+            transition={{ duration: 0.2 }}
+            className="sports-card"
             style={{
-              padding: "10px",
-              borderRadius: "8px",
-              border: "none",
-              background: selectedRole === "player" ? "#ffffff" : "transparent",
-              color: selectedRole === "player" ? "#047857" : "#64748b",
-              fontWeight: selectedRole === "player" ? "700" : "500",
-              cursor: "pointer",
-              boxShadow: selectedRole === "player" ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
-              transition: "all 0.2s ease",
-              fontSize: "14px",
+              maxWidth: "460px",
+              width: "100%",
+              padding: "32px",
+              background: "var(--surface)",
+              boxShadow: "var(--shadow-lg)",
+              textAlign: "left",
+              position: "relative",
+              maxHeight: "90vh",
+              overflowY: "auto",
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            🏏 I am a Player
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedRole("scout")}
-            style={{
-              padding: "10px",
-              borderRadius: "8px",
-              border: "none",
-              background: selectedRole === "scout" ? "#ffffff" : "transparent",
-              color: selectedRole === "scout" ? "#0284c7" : "#64748b",
-              fontWeight: selectedRole === "scout" ? "700" : "500",
-              cursor: "pointer",
-              boxShadow: selectedRole === "scout" ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
-              transition: "all 0.2s ease",
-              fontSize: "14px",
-            }}
-          >
-            🔎 I am a Scout
-          </button>
-        </div>
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              style={{
+                position: "absolute",
+                top: "20px",
+                right: "20px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--text-muted)",
+                padding: "4px",
+              }}
+            >
+              <X size={20} />
+            </button>
 
-        {/* Mode Switcher: Sign In vs Register */}
-        <div style={{ display: "flex", justifyContent: "center", gap: "16px", marginBottom: "20px", fontSize: "14px" }}>
-          <button
-            type="button"
-            onClick={() => setAuthMode("login")}
-            style={{
-              background: "none",
-              border: "none",
-              fontWeight: authMode === "login" ? "700" : "500",
-              color: authMode === "login" ? "#059669" : "#64748b",
-              borderBottom: authMode === "login" ? "2px solid #10b981" : "2px solid transparent",
-              paddingBottom: "4px",
-              cursor: "pointer",
-            }}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => setAuthMode("register")}
-            style={{
-              background: "none",
-              border: "none",
-              fontWeight: authMode === "register" ? "700" : "500",
-              color: authMode === "register" ? "#059669" : "#64748b",
-              borderBottom: authMode === "register" ? "2px solid #10b981" : "2px solid transparent",
-              paddingBottom: "4px",
-              cursor: "pointer",
-            }}
-          >
-            Create New Account
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          {authMode === "register" && (
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>Full Name</label>
-              <input
-                type="text"
-                className="glass-input"
-                placeholder={selectedRole === "player" ? "e.g. Amaan Khan" : "e.g. Vikram Rathore"}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{ width: "100%", marginTop: "4px" }}
-              />
+            {/* Header */}
+            <div style={{ marginBottom: "20px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--accent-dark)" }}>
+                BatVision Access
+              </span>
+              <h2 style={{ fontSize: "22px", fontWeight: "800", color: "var(--text-h)", marginTop: "2px" }}>
+                {authMode === "login" ? "Sign In to Account" : "Create New Profile"}
+              </h2>
+              {authReason && (
+                <p style={{ marginTop: "4px", fontSize: "12px", color: "var(--accent-dark)", fontWeight: "600" }}>
+                  {authReason}
+                </p>
+              )}
             </div>
-          )}
 
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>Email Address</label>
-            <input
-              type="email"
-              className="glass-input"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{ width: "100%", marginTop: "4px" }}
-            />
-          </div>
+            {/* Role Switcher */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "6px",
+                background: "var(--surface-subtle)",
+                padding: "4px",
+                borderRadius: "6px",
+                marginBottom: "20px",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedRole("player")}
+                style={{
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "none",
+                  background: selectedRole === "player" ? "var(--surface)" : "transparent",
+                  color: selectedRole === "player" ? "var(--text-h)" : "var(--text-muted)",
+                  fontWeight: selectedRole === "player" ? "700" : "500",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  boxShadow: selectedRole === "player" ? "var(--shadow-sm)" : "none",
+                }}
+              >
+                <User size={14} />
+                Athlete / Player
+              </button>
 
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>Password</label>
-            <input
-              type="password"
-              className="glass-input"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{ width: "100%", marginTop: "4px" }}
-            />
-          </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRole("scout")}
+                style={{
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "none",
+                  background: selectedRole === "scout" ? "var(--surface)" : "transparent",
+                  color: selectedRole === "scout" ? "var(--text-h)" : "var(--text-muted)",
+                  fontWeight: selectedRole === "scout" ? "700" : "500",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  boxShadow: selectedRole === "scout" ? "var(--shadow-sm)" : "none",
+                }}
+              >
+                <Search size={14} />
+                Scout / Selector
+              </button>
+            </div>
 
-          {/* Additional Fields for Registration */}
-          {authMode === "register" && selectedRole === "player" && (
-            <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            {/* Error banner */}
+            {errorMessage && (
+              <div
+                style={{
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "var(--status-low)",
+                  padding: "10px 12px",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  marginBottom: "16px",
+                }}
+              >
+                {errorMessage}
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {authMode === "register" && (
                 <div>
-                  <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>Age</label>
+                  <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text)" }}>Full Name</label>
                   <input
-                    type="number"
-                    className="glass-input"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    style={{ width: "100%", marginTop: "4px" }}
+                    type="text"
+                    required
+                    placeholder="e.g. Aryan Siddiqui"
+                    className="clean-input"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    style={{ marginTop: "4px" }}
                   />
                 </div>
-                <div>
-                  <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>Cricket Role</label>
-                  <select
-                    className="glass-input"
-                    value={playerRole}
-                    onChange={(e) => setPlayerRole(e.target.value)}
-                    style={{ width: "100%", marginTop: "4px" }}
-                  >
-                    <option value="Batsman">Batsman</option>
-                    <option value="Bowler">Bowler</option>
-                    <option value="All-Rounder">All-Rounder</option>
-                  </select>
-                </div>
+              )}
+
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text)" }}>Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@cricketacademy.org"
+                  className="clean-input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{ marginTop: "4px" }}
+                />
               </div>
 
               <div>
-                <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>Location / City</label>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text)" }}>Password</label>
                 <input
-                  type="text"
-                  className="glass-input"
-                  placeholder="e.g. Mumbai, Maharashtra"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  style={{ width: "100%", marginTop: "4px" }}
+                  type="password"
+                  required
+                  placeholder="Enter password"
+                  className="clean-input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ marginTop: "4px" }}
                 />
               </div>
-            </>
-          )}
 
-          {authMode === "register" && selectedRole === "scout" && (
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>Club / Academy / Organization</label>
-              <input
-                type="text"
-                className="glass-input"
-                placeholder="e.g. Mumbai Cricket Academy"
-                value={organization}
-                onChange={(e) => setOrganization(e.target.value)}
-                style={{ width: "100%", marginTop: "4px" }}
-              />
+              {/* Player Registration Fields */}
+              {authMode === "register" && selectedRole === "player" && (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text)" }}>Age</label>
+                      <input
+                        type="number"
+                        min="12"
+                        max="50"
+                        className="clean-input"
+                        value={age}
+                        onChange={(e) => setAge(e.target.value)}
+                        style={{ marginTop: "4px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text)" }}>Playing Role</label>
+                      <select
+                        className="clean-input"
+                        value={playerRole}
+                        onChange={(e) => setPlayerRole(e.target.value)}
+                        style={{ marginTop: "4px" }}
+                      >
+                        <option value="Batsman">Batsman</option>
+                        <option value="Bowler">Bowler</option>
+                        <option value="All-Rounder">All-Rounder</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text)" }}>Batting Stance</label>
+                      <select
+                        className="clean-input"
+                        value={battingStyle}
+                        onChange={(e) => setBattingStyle(e.target.value)}
+                        style={{ marginTop: "4px" }}
+                      >
+                        <option value="Right Hand Bat">Right Hand Bat</option>
+                        <option value="Left Hand Bat">Left Hand Bat</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text)" }}>Bowling Arm</label>
+                      <select
+                        className="clean-input"
+                        value={bowlingStyle}
+                        onChange={(e) => setBowlingStyle(e.target.value)}
+                        style={{ marginTop: "4px" }}
+                      >
+                        <option value="Right Arm Fast">Right Arm Fast</option>
+                        <option value="Right Arm Spin">Right Arm Spin</option>
+                        <option value="Left Arm Fast">Left Arm Fast</option>
+                        <option value="Left Arm Spin">Left Arm Spin</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text)" }}>City / State</label>
+                    <input
+                      type="text"
+                      className="clean-input"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      style={{ marginTop: "4px" }}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Scout Registration Fields */}
+              {authMode === "register" && selectedRole === "scout" && (
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text)" }}>Organization / Club</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Mumbai Cricket Association"
+                    className="clean-input"
+                    value={organization}
+                    onChange={(e) => setOrganization(e.target.value)}
+                    style={{ marginTop: "4px" }}
+                  />
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="btn-primary"
+                style={{
+                  marginTop: "8px",
+                  padding: "11px",
+                  fontSize: "14px",
+                  cursor: isLoading ? "wait" : "pointer",
+                }}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Authenticating...
+                  </>
+                ) : (
+                  <>
+                    {authMode === "login" ? `Sign In as ${selectedRole === "player" ? "Athlete" : "Scout"}` : "Complete Registration"}
+                    <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Toggle Login / Register */}
+            <div style={{ textAlign: "center", marginTop: "20px", paddingTop: "14px", borderTop: "1px solid var(--border)", fontSize: "13px", color: "var(--text-muted)" }}>
+              {authMode === "login" ? (
+                <span>
+                  New to BatVision?{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode("register");
+                      setErrorMessage("");
+                    }}
+                    style={{ background: "none", border: "none", color: "var(--accent-dark)", fontWeight: "700", cursor: "pointer", padding: 0 }}
+                  >
+                    Register here
+                  </button>
+                </span>
+              ) : (
+                <span>
+                  Already registered?{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode("login");
+                      setErrorMessage("");
+                    }}
+                    style={{ background: "none", border: "none", color: "var(--accent-dark)", fontWeight: "700", cursor: "pointer", padding: 0 }}
+                  >
+                    Sign in here
+                  </button>
+                </span>
+              )}
             </div>
-          )}
 
-          {errorMessage && (
-            <p style={{ color: "#e11d48", fontSize: "13px", margin: "4px 0 0 0", fontWeight: "600" }}>
-              {errorMessage}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            className="btn-green"
-            disabled={isLoading}
-            style={{ width: "100%", marginTop: "8px", padding: "12px", opacity: isLoading ? 0.7 : 1, cursor: isLoading ? "not-allowed" : "pointer" }}
-          >
-            {isLoading
-              ? "Authenticating..."
-              : authMode === "login"
-              ? `Sign In as ${selectedRole === "player" ? "Player" : "Scout"}`
-              : `Create ${selectedRole === "player" ? "Player" : "Scout"} Profile`}
-          </button>
-        </form>
-
-        {/* Skip / Continue as Guest Button */}
-        <div style={{ marginTop: "20px", textAlign: "center", borderTop: "1px solid var(--border)", paddingTop: "16px" }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#64748b",
-              fontSize: "14px",
-              cursor: "pointer",
-              fontWeight: "600",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            Skip & Browse as Guest →
-          </button>
-        </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

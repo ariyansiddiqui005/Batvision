@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { ReactLenis } from "lenis/react";
+import "lenis/dist/lenis.css";
+import { AnimatePresence, motion } from "motion/react";
 import Navbar from "./components/Navbar";
 import Home from "./components/Home";
 import PlayerPortal from "./components/PlayerPortal";
 import ScoutPortal from "./components/ScoutPortal";
 import Trials from "./components/Trials";
 import AuthModal from "./components/AuthModal";
+import ScrollProgress from "./components/ui/ScrollProgress";
 
 function App() {
   const [activeTab, setActiveTab] = useState("home");
@@ -28,13 +32,27 @@ function App() {
       if (data && data.players && data.players.length > 0) {
         setDbPlayers(data.players);
       }
-    } catch (e) {
+    } catch {
       console.log("Using in-memory fallback for players feed.");
     }
   };
 
   useEffect(() => {
-    fetchPlayersFromDb();
+    let isMounted = true;
+    fetch("http://127.0.0.1:5000/api/players")
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data && data.players && data.players.length > 0) {
+          setDbPlayers(data.players);
+        }
+      })
+      .catch(() => {
+        console.log("Using in-memory fallback for players feed.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Logged-in Player Profile State
@@ -65,7 +83,7 @@ function App() {
       if (data && Array.isArray(data.shortlists)) {
         setShortlist(data.shortlists);
       }
-    } catch (e) {
+    } catch {
       console.log("Using local shortlist state.");
     }
   };
@@ -117,7 +135,7 @@ function App() {
           setPlayerProfile((prev) => ({ ...prev, id: data.player_id }));
         }
         fetchPlayersFromDb();
-      } catch (err) {
+      } catch {
         console.log("Player profile synced.");
       }
 
@@ -164,7 +182,7 @@ function App() {
       if (data && Array.isArray(data.shortlists)) {
         setShortlist(data.shortlists);
       }
-    } catch (e) {
+    } catch {
       console.log("Shortlist updated locally.");
     }
   };
@@ -277,69 +295,99 @@ function App() {
     },
   ];
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeTab]);
+
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        shortlistCount={shortlist.length}
-        currentUser={currentUser}
-        onOpenAuthModal={openAuthModal}
-        onLogout={handleLogout}
-      />
+    <ReactLenis root options={{ lerp: 0.1, duration: 1.2, smoothWheel: true }}>
+      <ScrollProgress />
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <Navbar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          shortlistCount={shortlist.length}
+          currentUser={currentUser}
+          onOpenAuthModal={openAuthModal}
+          onLogout={handleLogout}
+        />
 
-      <main style={{ flex: 1 }}>
-        {activeTab === "home" && <Home setActiveTab={setActiveTab} />}
+        <main style={{ flex: 1 }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {activeTab === "home" && (
+                <Home
+                  setActiveTab={setActiveTab}
+                  players={dbPlayers && dbPlayers.length > 0 ? dbPlayers : scoutPlayersList}
+                />
+              )}
 
-        {activeTab === "player" && (
-          <PlayerPortal
-            playerProfile={playerProfile}
-            setPlayerProfile={setPlayerProfile}
-            playerScores={playerScores}
-            onVideoAnalyzed={handleVideoAnalyzed}
-            currentUser={currentUser}
-            onRequireAuth={openAuthModal}
-          />
-        )}
+              {activeTab === "player" && (
+                <PlayerPortal
+                  playerProfile={playerProfile}
+                  setPlayerProfile={setPlayerProfile}
+                  playerScores={playerScores}
+                  onVideoAnalyzed={handleVideoAnalyzed}
+                  currentUser={currentUser}
+                  onRequireAuth={openAuthModal}
+                />
+              )}
 
-        {activeTab === "scout" && (
-          <ScoutPortal
-            players={dbPlayers && dbPlayers.length > 0 ? dbPlayers : scoutPlayersList}
-            shortlist={shortlist}
-            toggleShortlist={toggleShortlist}
-            currentUser={currentUser}
-            onRequireAuth={openAuthModal}
-          />
-        )}
+              {activeTab === "scout" && (
+                <ScoutPortal
+                  players={dbPlayers && dbPlayers.length > 0 ? dbPlayers : scoutPlayersList}
+                  shortlist={shortlist}
+                  toggleShortlist={toggleShortlist}
+                  currentUser={currentUser}
+                  onRequireAuth={openAuthModal}
+                />
+              )}
 
-        {activeTab === "trials" && <Trials />}
-      </main>
+              {activeTab === "trials" && <Trials />}
+            </motion.div>
+          </AnimatePresence>
+        </main>
 
-      <footer
-        style={{
-          borderTop: "1px solid var(--border)",
-          padding: "24px",
-          textAlign: "center",
-          fontSize: "13px",
-          color: "#64748b",
-          marginTop: "48px",
-          background: "rgba(255, 255, 255, 0.6)",
-        }}
-      >
-        <p style={{ margin: 0 }}>
-          BatVision © 2026 — AI-Based Cricket Scouting & Talent Analytics System (50% Batting + 50% Bowling)
-        </p>
-      </footer>
+        <footer
+          style={{
+            borderTop: "1px solid var(--border)",
+            padding: "24px",
+            textAlign: "center",
+            fontSize: "12px",
+            color: "var(--text-muted)",
+            marginTop: "64px",
+            background: "var(--surface)",
+          }}
+        >
+          <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+            <span style={{ fontWeight: "700", color: "var(--text-h)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              BatVision Platform
+            </span>
+            <span>
+              Cricket Talent Discovery & Biomechanical Scouting System
+            </span>
+            <span className="mono-num" style={{ fontSize: "11px" }}>
+              © 2026 BatVision • 50/50 Combine Index
+            </span>
+          </div>
+        </footer>
 
-      {/* Role-Based Auth Modal with Skip / Guest Option */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        initialRole={authModalRole}
-        onLoginSuccess={handleLoginSuccess}
-        authReason={authModalReason}
-      />
-    </div>
+        {/* Role-Based Auth Modal with Skip / Guest Option */}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          initialRole={authModalRole}
+          onLoginSuccess={handleLoginSuccess}
+          authReason={authModalReason}
+        />
+      </div>
+    </ReactLenis>
   );
 }
 

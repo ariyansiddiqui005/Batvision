@@ -2,6 +2,7 @@ import os
 import json
 import mysql.connector
 from mysql.connector import Error
+from werkzeug.security import generate_password_hash
 
 # Database connection configuration (configurable via environment variables)
 DB_HOST = os.environ.get("DB_HOST", "127.0.0.1")
@@ -420,6 +421,7 @@ def save_player_profile(data):
     """Inserts or updates a player's profile in MySQL and in-memory store."""
     name = data.get("name", "New Player")
     email = data.get("email", None)
+    password = data.get("password", None)
     age = int(data.get("age", 20))
     role = data.get("role", "All-Rounder")
     batting_style = data.get("battingStyle", "Right Hand Bat")
@@ -428,6 +430,7 @@ def save_player_profile(data):
     player_id = data.get("id")
 
     assigned_id = None
+    hashed_pw = generate_password_hash(password) if password else None
 
     # Try MySQL first
     conn = get_connection()
@@ -435,12 +438,20 @@ def save_player_profile(data):
         try:
             cursor = conn.cursor()
             if player_id and str(player_id).isdigit():
-                update_sql = """
-                    UPDATE players 
-                    SET name=%s, age=%s, role=%s, batting_style=%s, bowling_style=%s, location=%s
-                    WHERE id=%s
-                """
-                cursor.execute(update_sql, (name, age, role, batting_style, bowling_style, location, int(player_id)))
+                if hashed_pw:
+                    update_sql = """
+                        UPDATE players 
+                        SET name=%s, age=%s, role=%s, batting_style=%s, bowling_style=%s, location=%s, password=%s
+                        WHERE id=%s
+                    """
+                    cursor.execute(update_sql, (name, age, role, batting_style, bowling_style, location, hashed_pw, int(player_id)))
+                else:
+                    update_sql = """
+                        UPDATE players 
+                        SET name=%s, age=%s, role=%s, batting_style=%s, bowling_style=%s, location=%s
+                        WHERE id=%s
+                    """
+                    cursor.execute(update_sql, (name, age, role, batting_style, bowling_style, location, int(player_id)))
                 conn.commit()
                 assigned_id = int(player_id)
             elif email:
@@ -448,19 +459,27 @@ def save_player_profile(data):
                 row = cursor.fetchone()
                 if row:
                     assigned_id = row[0]
-                    update_sql = """
-                        UPDATE players 
-                        SET name=%s, age=%s, role=%s, batting_style=%s, bowling_style=%s, location=%s
-                        WHERE id=%s
-                    """
-                    cursor.execute(update_sql, (name, age, role, batting_style, bowling_style, location, assigned_id))
+                    if hashed_pw:
+                        update_sql = """
+                            UPDATE players 
+                            SET name=%s, age=%s, role=%s, batting_style=%s, bowling_style=%s, location=%s, password=%s
+                            WHERE id=%s
+                        """
+                        cursor.execute(update_sql, (name, age, role, batting_style, bowling_style, location, hashed_pw, assigned_id))
+                    else:
+                        update_sql = """
+                            UPDATE players 
+                            SET name=%s, age=%s, role=%s, batting_style=%s, bowling_style=%s, location=%s
+                            WHERE id=%s
+                        """
+                        cursor.execute(update_sql, (name, age, role, batting_style, bowling_style, location, assigned_id))
                     conn.commit()
                 else:
                     sql = """
-                        INSERT INTO players (name, email, age, role, batting_style, bowling_style, location)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO players (name, email, password, age, role, batting_style, bowling_style, location)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
-                    cursor.execute(sql, (name, email, age, role, batting_style, bowling_style, location))
+                    cursor.execute(sql, (name, email, hashed_pw, age, role, batting_style, bowling_style, location))
                     conn.commit()
                     assigned_id = cursor.lastrowid
             cursor.close()
@@ -487,6 +506,8 @@ def save_player_profile(data):
             p["name"] = name
             if email:
                 p["email"] = email
+            if hashed_pw:
+                p["password"] = hashed_pw
             p["age"] = age
             p["role"] = role
             p["batting_style"] = batting_style
@@ -500,6 +521,7 @@ def save_player_profile(data):
             "id": assigned_id,
             "name": name,
             "email": email or "",
+            "password": hashed_pw,
             "age": age,
             "role": role,
             "batting_style": batting_style,
@@ -568,6 +590,7 @@ def get_player_by_email(email):
                         "id": player_id,
                         "name": player["name"],
                         "email": player["email"],
+                        "password": player.get("password"),
                         "age": player["age"],
                         "role": player["role"],
                         "battingStyle": player["batting_style"],
@@ -594,6 +617,7 @@ def get_player_by_email(email):
                 "id": pid,
                 "name": matched_player["name"],
                 "email": matched_player.get("email", ""),
+                "password": matched_player.get("password"),
                 "age": matched_player["age"],
                 "role": matched_player["role"],
                 "battingStyle": matched_player["batting_style"],
@@ -613,10 +637,13 @@ def save_scout_profile(data):
     """Inserts or updates a scout profile in MySQL and in-memory fallback."""
     name = data.get("name", "Scout User").strip()
     email = data.get("email", "").strip().lower()
+    password = data.get("password", None)
     organization = data.get("organization", "State Cricket Academy").strip()
     scout_id = data.get("id")
 
     assigned_id = None
+    hashed_pw = generate_password_hash(password) if password else None
+
     conn = get_connection()
     if conn:
         try:
@@ -626,14 +653,20 @@ def save_scout_profile(data):
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     name VARCHAR(100) NOT NULL,
                     email VARCHAR(120) UNIQUE NOT NULL,
+                    password VARCHAR(255) NULL,
                     organization VARCHAR(150) DEFAULT 'State Cricket Academy',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
             if scout_id and str(scout_id).isdigit():
-                cursor.execute("""
-                    UPDATE scouts SET name=%s, organization=%s WHERE id=%s
-                """, (name, organization, int(scout_id)))
+                if hashed_pw:
+                    cursor.execute("""
+                        UPDATE scouts SET name=%s, organization=%s, password=%s WHERE id=%s
+                    """, (name, organization, hashed_pw, int(scout_id)))
+                else:
+                    cursor.execute("""
+                        UPDATE scouts SET name=%s, organization=%s WHERE id=%s
+                    """, (name, organization, int(scout_id)))
                 conn.commit()
                 assigned_id = int(scout_id)
             elif email:
@@ -641,14 +674,19 @@ def save_scout_profile(data):
                 row = cursor.fetchone()
                 if row:
                     assigned_id = row[0]
-                    cursor.execute("""
-                        UPDATE scouts SET name=%s, organization=%s WHERE id=%s
-                    """, (name, organization, assigned_id))
+                    if hashed_pw:
+                        cursor.execute("""
+                            UPDATE scouts SET name=%s, organization=%s, password=%s WHERE id=%s
+                        """, (name, organization, hashed_pw, assigned_id))
+                    else:
+                        cursor.execute("""
+                            UPDATE scouts SET name=%s, organization=%s WHERE id=%s
+                        """, (name, organization, assigned_id))
                     conn.commit()
                 else:
                     cursor.execute("""
-                        INSERT INTO scouts (name, email, organization) VALUES (%s, %s, %s)
-                    """, (name, email, organization))
+                        INSERT INTO scouts (name, email, password, organization) VALUES (%s, %s, %s, %s)
+                    """, (name, email, hashed_pw, organization))
                     conn.commit()
                     assigned_id = cursor.lastrowid
             cursor.close()
@@ -673,6 +711,8 @@ def save_scout_profile(data):
             s["id"] = assigned_id
             s["name"] = name
             s["email"] = email
+            if hashed_pw:
+                s["password"] = hashed_pw
             s["organization"] = organization
             found = True
             break
@@ -681,6 +721,7 @@ def save_scout_profile(data):
             "id": assigned_id,
             "name": name,
             "email": email,
+            "password": hashed_pw,
             "organization": organization
         })
 
@@ -703,6 +744,7 @@ def get_scout_by_email(email):
                     "id": scout["id"],
                     "name": scout["name"],
                     "email": scout["email"],
+                    "password": scout.get("password"),
                     "role": "scout",
                     "organization": scout["organization"]
                 }
@@ -716,6 +758,7 @@ def get_scout_by_email(email):
             "id": match["id"],
             "name": match["name"],
             "email": match["email"],
+            "password": match.get("password"),
             "role": "scout",
             "organization": match["organization"]
         }

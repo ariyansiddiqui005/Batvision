@@ -1,4 +1,15 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  Search,
+  Bookmark,
+  FileText,
+  X,
+  ChevronRight,
+  Filter,
+  CheckCircle,
+  MapPin,
+} from "lucide-react";
 
 function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequireAuth }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -9,19 +20,10 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
 
   const isScoutLoggedIn = currentUser && currentUser.role === "scout";
 
-  const getTierColor = (classification) => {
-    switch (classification) {
-      case "Exceptional":
-        return "#10b981";
-      case "Highly Promising":
-        return "#0284c7";
-      case "Promising":
-        return "#7c3aed";
-      case "Developing":
-        return "#d97706";
-      default:
-        return "#e11d48";
-    }
+  const getStatusColor = (classification) => {
+    if (classification === "Exceptional" || classification === "Highly Promising") return "var(--accent-dark)";
+    if (classification === "Promising" || classification === "Developing") return "var(--status-mid)";
+    return "var(--status-low)";
   };
 
   const handleShortlistClick = (playerId) => {
@@ -32,36 +34,48 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
     toggleShortlist(playerId);
   };
 
-  // Filter logic
-  const filteredPlayers = players.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.location.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesRole = roleFilter === "All" || p.role === roleFilter;
-
-    let matchesScore = true;
-    if (minScoreFilter !== "All") {
-      const minVal = parseInt(minScoreFilter, 10);
-      matchesScore = (p.overallScore || p.battingScore || p.bowlingScore || 0) >= minVal;
+  // Score extraction helper for sorting top prospects to the top
+  const getPlayerScore = (p) => {
+    if (typeof p.overallScore === "number" && p.overallScore > 0) return p.overallScore;
+    if (typeof p.battingScore === "number" && typeof p.bowlingScore === "number") {
+      return Math.round(p.battingScore * 0.5 + p.bowlingScore * 0.5);
     }
+    return Math.max(p.battingScore || 0, p.bowlingScore || 0);
+  };
 
-    const matchesShortlist = !showShortlistOnly || shortlist.includes(p.id);
+  // Filter and sort logic (best score prospects first)
+  const filteredPlayers = players
+    .filter((p) => {
+      const matchesSearch =
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.location.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesSearch && matchesRole && matchesScore && matchesShortlist;
-  });
+      const matchesRole = roleFilter === "All" || p.role === roleFilter;
+
+      let matchesScore = true;
+      if (minScoreFilter !== "All") {
+        const minVal = parseInt(minScoreFilter, 10);
+        matchesScore = (p.overallScore || p.battingScore || p.bowlingScore || 0) >= minVal;
+      }
+
+      const matchesShortlist = !showShortlistOnly || shortlist.includes(p.id);
+
+      return matchesSearch && matchesRole && matchesScore && matchesShortlist;
+    })
+    .sort((a, b) => getPlayerScore(b) - getPlayerScore(a));
 
   return (
-    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "36px 20px" }}>
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 80px 24px" }}>
+      
       {/* Guest Mode Banner if not logged in as Scout */}
       {!isScoutLoggedIn && (
         <div
-          className="glass-card"
+          className="sports-card"
           style={{
-            padding: "16px 24px",
+            padding: "16px 20px",
             marginBottom: "24px",
-            background: "rgba(2, 132, 199, 0.08)",
-            border: "1px solid rgba(2, 132, 199, 0.3)",
+            background: "var(--surface-subtle)",
+            border: "1px solid var(--border-strong)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -70,209 +84,285 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "22px" }}>🔎</span>
-            <p style={{ margin: 0, fontSize: "14px", color: "#0f172a" }}>
-              <strong>Scout Portal Access:</strong> Sign in as a Scout to shortlist prospects, view full computer vision reports, and connect with talent.
+            <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-h)" }}>
+              SCOUT DIRECTORY VIEW
+            </span>
+            <span style={{ color: "var(--border-strong)" }}>|</span>
+            <p style={{ fontSize: "13px", color: "var(--text)" }}>
+              Sign in with a verified scout account to save prospects to combine shortlists and export evaluations.
             </p>
           </div>
           <button
             onClick={() => onRequireAuth("scout", "Sign in or register as an official talent scout.")}
-            style={{
-              background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "8px",
-              padding: "8px 18px",
-              fontSize: "13px",
-              fontWeight: "600",
-              cursor: "pointer",
-            }}
+            className="btn-primary"
+            style={{ padding: "6px 14px", fontSize: "12px" }}
           >
-            Register as Scout / Sign In
+            Sign In as Scout
           </button>
         </div>
       )}
 
-      {/* Scout Feed Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px", flexWrap: "wrap", gap: "16px" }}>
+      {/* Directory Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "28px", flexWrap: "wrap", gap: "16px" }}>
         <div>
-          <div style={{ display: "inline-block", background: "rgba(2, 132, 199, 0.1)", color: "#0284c7", padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
-            🔎 Scout Talent Directory
-          </div>
-          <h2 style={{ margin: 0, fontSize: "32px", color: "#0f172a" }}>Verified Cricket Talent Feed</h2>
-          <p style={{ margin: "6px 0 0 0", color: "#64748b", fontSize: "14px" }}>
-            Grassroots cricketers evaluated objectively using BatVision computer vision.
+          <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent-dark)" }}>
+            Talent Discovery
+          </span>
+          <h1 style={{ fontSize: "30px", fontWeight: "900", color: "var(--text-h)", marginTop: "4px" }}>
+            CRICKET PROSPECT FEED
+          </h1>
+          <p style={{ fontSize: "14px", color: "var(--text-muted)", marginTop: "4px" }}>
+            Verified athlete dossiers evaluated via computer vision batting and bowling models.
           </p>
         </div>
 
         <button
           onClick={() => setShowShortlistOnly(!showShortlistOnly)}
-          className="btn-glass"
-          style={{
-            borderColor: showShortlistOnly ? "#f59e0b" : "var(--border)",
-            background: showShortlistOnly ? "rgba(245, 158, 11, 0.12)" : "var(--glass-bg)",
-            color: showShortlistOnly ? "#d97706" : "var(--text-h)",
-          }}
+          className={showShortlistOnly ? "btn-primary" : "btn-secondary"}
+          style={{ fontSize: "13px", padding: "8px 16px" }}
         >
-          ⭐ {showShortlistOnly ? "Showing Shortlist" : `Shortlisted Talent (${shortlist.length})`}
+          <Bookmark size={15} />
+          {showShortlistOnly ? "Viewing Shortlisted Only" : `Shortlisted Prospects (${shortlist.length})`}
         </button>
       </div>
 
-      {/* Search & Filter Controls - Liquid Glass */}
+      {/* Filter and Search Bar */}
       <div
-        className="glass-card"
+        className="sports-card"
         style={{
+          padding: "16px 20px",
+          marginBottom: "24px",
           display: "flex",
+          flexDirection: "column",
           gap: "14px",
-          marginBottom: "32px",
-          flexWrap: "wrap",
-          padding: "18px 24px",
         }}
       >
-        <input
-          type="text"
-          placeholder="Search by player name or city..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="glass-input"
-          style={{ flex: "1 1 240px" }}
-        />
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ position: "relative", flex: "1 1 260px" }}>
+            <Search size={15} color="var(--text-muted)" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
+            <input
+              type="text"
+              placeholder="Search by prospect name, academy, or state..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="clean-input"
+              style={{ paddingLeft: "36px" }}
+            />
+          </div>
 
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          className="glass-input"
-        >
-          <option value="All">All Cricket Roles</option>
-          <option value="Batsman">Batsmen</option>
-          <option value="Bowler">Bowlers</option>
-          <option value="All-Rounder">All-Rounders</option>
-        </select>
+          <span style={{ fontSize: "12px", color: "var(--text-muted)", marginLeft: "auto" }}>
+            Showing <strong>{filteredPlayers.length}</strong> verified profiles
+          </span>
+        </div>
 
-        <select
-          value={minScoreFilter}
-          onChange={(e) => setMinScoreFilter(e.target.value)}
-          className="glass-input"
-        >
-          <option value="All">Any AI Score</option>
-          <option value="70">70+ (Promising & above)</option>
-          <option value="80">80+ (Highly Promising)</option>
-          <option value="90">90+ (Exceptional)</option>
-        </select>
+        {/* Quick Filter Chips */}
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", paddingTop: "8px", borderTop: "1px solid var(--border)" }}>
+          <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginRight: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+            <Filter size={12} /> Role:
+          </span>
+          {["All", "Batsman", "Bowler", "All-Rounder"].map((role) => (
+            <button
+              key={role}
+              onClick={() => setRoleFilter(role)}
+              style={{
+                border: `1px solid ${roleFilter === role ? "var(--accent)" : "var(--border)"}`,
+                background: roleFilter === role ? "var(--accent-subtle)" : "var(--surface)",
+                color: roleFilter === role ? "var(--accent-dark)" : "var(--text)",
+                padding: "4px 10px",
+                borderRadius: "4px",
+                fontSize: "12px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {role === "All" ? "All Roles" : role}
+            </button>
+          ))}
+
+          <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 4px 0 12px" }}>
+            Threshold:
+          </span>
+          {["All", "70", "80", "90"].map((sc) => (
+            <button
+              key={sc}
+              onClick={() => setMinScoreFilter(sc)}
+              style={{
+                border: `1px solid ${minScoreFilter === sc ? "var(--accent)" : "var(--border)"}`,
+                background: minScoreFilter === sc ? "var(--accent-subtle)" : "var(--surface)",
+                color: minScoreFilter === sc ? "var(--accent-dark)" : "var(--text)",
+                padding: "4px 10px",
+                borderRadius: "4px",
+                fontSize: "12px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {sc === "All" ? "Any Score" : `${sc}+ Index`}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Players Grid */}
+      {/* Prospect Index Grid */}
       {filteredPlayers.length === 0 ? (
-        <div className="glass-card" style={{ textAlign: "center", padding: "48px", color: "#64748b" }}>
-          <p style={{ fontSize: "16px", margin: 0 }}>No players match your search filters.</p>
+        <div className="sports-card" style={{ textAlign: "center", padding: "48px 24px", color: "var(--text-muted)" }}>
+          <p style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-h)", marginBottom: "4px" }}>
+            No matching prospects found.
+          </p>
+          <p style={{ fontSize: "13px" }}>
+            Try expanding your search query or resetting the score filters.
+          </p>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "24px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "20px" }}>
           {filteredPlayers.map((player) => {
             const isShortlisted = shortlist.includes(player.id);
-            const tierColor = getTierColor(player.classification);
+            const statusColor = getStatusColor(player.classification);
 
             return (
               <div
                 key={player.id}
-                className="glass-card glass-card-hover"
+                className="sports-card-interactive"
                 style={{
                   padding: "24px",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
-                  borderTop: `3px solid ${player.overallScore ? tierColor : "#10b981"}`,
                 }}
               >
                 <div>
-                  {/* Top Bar: Name & Shortlist */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+                  {/* Top Header: Name, Location, Bookmark */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: "19px", color: "#0f172a" }}>{player.name}</h3>
-                      <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#64748b" }}>
-                        {player.age} yrs • 📍 {player.location} • <strong style={{ color: "#059669" }}>{player.role}</strong>
-                      </p>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <h3 style={{ fontSize: "18px", fontWeight: "800", color: "var(--text-h)" }}>
+                          {player.name}
+                        </h3>
+                        <CheckCircle size={14} color="var(--accent-dark)" />
+                      </div>
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                        <MapPin size={12} /> {player.location} • {player.age} yrs
+                      </div>
                     </div>
+
                     <button
                       onClick={() => handleShortlistClick(player.id)}
-                      title={isShortlisted ? "Remove from shortlist" : "Add to shortlist"}
+                      title={isShortlisted ? "Remove from shortlist" : "Add to combine shortlist"}
                       style={{
-                        background: isShortlisted ? "#f59e0b" : "rgba(255, 255, 255, 0.8)",
-                        color: isShortlisted ? "#fff" : "#64748b",
-                        border: `1px solid ${isShortlisted ? "#f59e0b" : "var(--border)"}`,
-                        borderRadius: "8px",
-                        padding: "4px 10px",
+                        background: isShortlisted ? "var(--accent-subtle)" : "transparent",
+                        color: isShortlisted ? "var(--accent-dark)" : "var(--text-muted)",
+                        border: `1px solid ${isShortlisted ? "var(--accent-border)" : "var(--border)"}`,
+                        borderRadius: "4px",
+                        padding: "5px 9px",
                         cursor: "pointer",
-                        fontSize: "13px",
+                        fontSize: "11px",
                         fontWeight: "600",
-                        boxShadow: isShortlisted ? "0 2px 8px rgba(245, 158, 11, 0.35)" : "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
                       }}
                     >
-                      {isShortlisted ? "⭐ Saved" : "☆ Save"}
+                      <Bookmark size={13} fill={isShortlisted ? "var(--accent-dark)" : "none"} />
+                      {isShortlisted ? "Shortlisted" : "Shortlist"}
                     </button>
                   </div>
 
-                  {/* Overall Score Badge - Liquid Glass inner pill */}
+                  {/* Playing Discipline Tag */}
+                  <div style={{ marginBottom: "16px" }}>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: "600",
+                        padding: "2px 6px",
+                        borderRadius: "3px",
+                        background: "var(--surface-subtle)",
+                        color: "var(--text)",
+                        border: "1px solid var(--border)",
+                      }}
+                    >
+                      {player.role}
+                    </span>
+                  </div>
+
+                  {/* Overall Score Box */}
                   <div
                     style={{
-                      background: "rgba(255, 255, 255, 0.65)",
-                      borderRadius: "12px",
+                      background: "var(--surface-subtle)",
+                      borderRadius: "6px",
                       padding: "14px",
-                      textAlign: "center",
-                      marginBottom: "16px",
-                      border: `1px solid ${player.overallScore ? tierColor : "var(--border)"}`,
-                      boxShadow: player.overallScore ? `0 4px 16px ${tierColor}18` : "none",
+                      marginBottom: "14px",
+                      border: "1px solid var(--border)",
                     }}
                   >
-                    <div style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: "600" }}>
-                      Overall AI Talent Score
-                    </div>
-                    {player.overallScore ? (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <div style={{ fontSize: "36px", fontWeight: "900", color: tierColor, margin: "2px 0" }}>
-                          {player.overallScore} <span style={{ fontSize: "16px", color: "#64748b", fontWeight: "600" }}>/ 100</span>
+                        <div style={{ fontSize: "10px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                          COMBINED TALENT RANK
                         </div>
-                        <span style={{ background: tierColor, color: "#fff", padding: "3px 10px", borderRadius: "12px", fontSize: "11px", fontWeight: "700" }}>
+                        <div className="mono-num" style={{ fontSize: "28px", fontWeight: "900", color: "var(--text-h)", marginTop: "2px" }}>
+                          {player.overallScore || "—"}
+                          <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: "500" }}> / 100</span>
+                        </div>
+                      </div>
+
+                      {player.classification && (
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: "600",
+                            padding: "2px 6px",
+                            borderRadius: "3px",
+                            background: "var(--surface)",
+                            color: statusColor,
+                            border: "1px solid var(--border)",
+                          }}
+                        >
                           {player.classification}
                         </span>
-                      </div>
-                    ) : (
-                      <p style={{ margin: "6px 0 0 0", fontSize: "12px", color: "#64748b", fontStyle: "italic" }}>
-                        Requires both Batting & Bowling evaluations
-                      </p>
-                    )}
+                      )}
+                    </div>
                   </div>
 
-                  {/* Component Scores */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-                    <div style={{ background: "rgba(241, 245, 249, 0.6)", padding: "10px", borderRadius: "10px", textAlign: "center", border: "1px solid rgba(226, 232, 240, 0.6)" }}>
-                      <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600" }}>🏏 Batting</div>
-                      <div style={{ fontSize: "17px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>
-                        {player.battingScore ? `${player.battingScore} ⭐` : "N/A"}
+                  {/* Component Breakdown (Batting & Bowling) */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "16px" }}>
+                    <div style={{ padding: "8px 10px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px" }}>
+                      <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Batting Index</div>
+                      <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                        {player.battingScore ? `${player.battingScore}` : "N/A"}
                       </div>
                     </div>
-                    <div style={{ background: "rgba(241, 245, 249, 0.6)", padding: "10px", borderRadius: "10px", textAlign: "center", border: "1px solid rgba(226, 232, 240, 0.6)" }}>
-                      <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600" }}>🎯 Bowling</div>
-                      <div style={{ fontSize: "17px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>
-                        {player.bowlingScore ? `${player.bowlingScore} ⭐` : "N/A"}
+
+                    <div style={{ padding: "8px 10px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px" }}>
+                      <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Bowling Index</div>
+                      <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                        {player.bowlingScore ? `${player.bowlingScore}` : "N/A"}
                       </div>
                     </div>
                   </div>
 
-                  {/* Highlights */}
+                  {/* Scout Highlights */}
                   {player.highlights && (
-                    <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 16px 0", lineHeight: "1.5" }}>
-                      <strong>Key Insight:</strong> {player.highlights}
+                    <p style={{ fontSize: "12px", color: "var(--text)", marginBottom: "16px", lineHeight: "1.5" }}>
+                      {player.highlights}
                     </p>
                   )}
                 </div>
 
+                {/* Inspect Action */}
                 <button
                   onClick={() => setSelectedPlayerModal(player)}
-                  className="btn-glass"
-                  style={{ width: "100%", textAlign: "center" }}
+                  className="btn-secondary"
+                  style={{
+                    width: "100%",
+                    fontSize: "12px",
+                    padding: "8px 12px",
+                  }}
                 >
-                  Inspect Full AI Report →
+                  <FileText size={13} />
+                  Inspect Talent Dossier
+                  <ChevronRight size={13} />
                 </button>
               </div>
             );
@@ -280,104 +370,167 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
         </div>
       )}
 
-      {/* Full AI Report Modal - Liquid Glass */}
-      {selectedPlayerModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(15, 23, 42, 0.4)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "20px",
-            zIndex: 1000,
-          }}
-          onClick={() => setSelectedPlayerModal(null)}
-        >
-          <div
-            className="glass-card"
+      {/* OFFICIAL PROSPECT DOSSIER MODAL */}
+      <AnimatePresence>
+        {selectedPlayerModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
             style={{
-              maxWidth: "520px",
-              width: "100%",
-              padding: "28px",
-              maxHeight: "85vh",
-              overflowY: "auto",
-              textAlign: "left",
-              background: "rgba(255, 255, 255, 0.95)",
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(9, 13, 22, 0.6)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+              zIndex: 1000,
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setSelectedPlayerModal(null)}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h3 style={{ margin: 0, fontSize: "20px" }}>📊 Scout Report: {selectedPlayerModal.name}</h3>
-              <button
-                onClick={() => setSelectedPlayerModal(null)}
-                style={{ background: "transparent", border: "none", fontSize: "20px", cursor: "pointer", color: "#64748b" }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 16px 0" }}>
-              {selectedPlayerModal.age} yrs • {selectedPlayerModal.location} • {selectedPlayerModal.role} • {selectedPlayerModal.battingStyle} • {selectedPlayerModal.bowlingStyle}
-            </p>
-
-            <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "16px", borderRadius: "12px", marginBottom: "18px" }}>
-              <h4 style={{ margin: "0 0 6px 0", color: "#059669" }}>Scouting Evaluation Score</h4>
-              <p style={{ margin: 0, fontSize: "13px", color: "#475569" }}>
-                Formula: (Batting 50%) + (Bowling 50%)
-              </p>
-              <p style={{ margin: "4px 0 0 0", fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
-                Overall Score: {selectedPlayerModal.overallScore ? `${selectedPlayerModal.overallScore} / 100 (${selectedPlayerModal.classification})` : "Pending completion of both evaluations"}
-              </p>
-            </div>
-
-            {selectedPlayerModal.reportDetails ? (
-              <div>
-                <h4 style={{ margin: "0 0 6px 0", color: "#059669", fontSize: "14px" }}>Verified Strengths</h4>
-                <ul style={{ fontSize: "13px", paddingLeft: "18px", margin: "0 0 14px 0", color: "#475569", lineHeight: "1.6" }}>
-                  {selectedPlayerModal.reportDetails.strengths.map((s, idx) => (
-                    <li key={idx}>{s}</li>
-                  ))}
-                </ul>
-
-                <h4 style={{ margin: "0 0 6px 0", color: "#d97706", fontSize: "14px" }}>Areas for Improvement</h4>
-                <ul style={{ fontSize: "13px", paddingLeft: "18px", margin: "0 0 14px 0", color: "#475569", lineHeight: "1.6" }}>
-                  {selectedPlayerModal.reportDetails.improvements.map((imp, idx) => (
-                    <li key={idx}>{imp}</li>
-                  ))}
-                </ul>
-
-                <div style={{ background: "rgba(241, 245, 249, 0.8)", padding: "12px", borderRadius: "8px", fontSize: "13px", marginTop: "12px", border: "1px solid var(--border)" }}>
-                  <strong style={{ color: "#0f172a" }}>Scout Recommendation:</strong> {selectedPlayerModal.reportDetails.recommendation}
-                </div>
-              </div>
-            ) : (
-              <p style={{ fontSize: "13px", color: "#64748b" }}>Detailed AI metrics will appear once new videos are uploaded and processed.</p>
-            )}
-
-            <button
-              onClick={() => {
-                handleShortlistClick(selectedPlayerModal.id);
-                setSelectedPlayerModal(null);
-              }}
-              className={shortlist.includes(selectedPlayerModal.id) ? "btn-glass" : "btn-green"}
+            <motion.div
+              data-lenis-prevent="true"
+              initial={{ scale: 0.96, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="sports-card"
               style={{
-                marginTop: "22px",
+                maxWidth: "540px",
                 width: "100%",
-                padding: "12px",
+                padding: "28px",
+                maxHeight: "88vh",
+                overflowY: "auto",
+                background: "var(--surface)",
+                boxShadow: "var(--shadow-lg)",
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              {shortlist.includes(selectedPlayerModal.id) ? "Remove from Shortlist" : "⭐ Add to Scout Shortlist"}
-            </button>
-          </div>
-        </div>
-      )}
+              {/* Modal Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px", borderBottom: "1px solid var(--border)", paddingBottom: "16px" }}>
+                <div>
+                  <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
+                    OFFICIAL PROSPECT DOSSIER
+                  </span>
+                  <h2 style={{ fontSize: "22px", fontWeight: "800", color: "var(--text-h)", marginTop: "2px" }}>
+                    {selectedPlayerModal.name}
+                  </h2>
+                  <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "2px" }}>
+                    {selectedPlayerModal.role} • {selectedPlayerModal.location} • {selectedPlayerModal.age} Years Old
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedPlayerModal(null)}
+                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "4px" }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Combined Score Strip */}
+              <div
+                style={{
+                  background: "var(--surface-subtle)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "6px",
+                  padding: "16px",
+                  marginBottom: "20px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase" }}>
+                    Composite Score
+                  </div>
+                  <div className="mono-num" style={{ fontSize: "32px", fontWeight: "900", color: "var(--text-h)" }}>
+                    {selectedPlayerModal.overallScore ? `${selectedPlayerModal.overallScore}` : "Pending"}
+                    <span style={{ fontSize: "14px", color: "var(--text-muted)" }}> / 100</span>
+                  </div>
+                </div>
+
+                {selectedPlayerModal.classification && (
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      padding: "4px 8px",
+                      borderRadius: "4px",
+                      background: "var(--surface)",
+                      color: getStatusColor(selectedPlayerModal.classification),
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    {selectedPlayerModal.classification}
+                  </span>
+                )}
+              </div>
+
+              {/* Detailed Feedback */}
+              {selectedPlayerModal.reportDetails ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div>
+                    <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", color: "var(--accent-dark)", marginBottom: "6px" }}>
+                      Verified Technical Strengths
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px", color: "var(--text)", lineHeight: "1.6" }}>
+                      {selectedPlayerModal.reportDetails.strengths.map((s, idx) => (
+                        <li key={idx}>{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-h)", marginBottom: "6px" }}>
+                      Targeted Technical Refinements
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px", color: "var(--text)", lineHeight: "1.6" }}>
+                      {selectedPlayerModal.reportDetails.improvements.map((imp, idx) => (
+                        <li key={idx}>{imp}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div style={{ background: "var(--surface-subtle)", padding: "12px 14px", borderRadius: "6px", fontSize: "13px", border: "1px solid var(--border)" }}>
+                    <span style={{ fontWeight: "700", color: "var(--text-h)" }}>Selector Recommendation: </span>
+                    <span style={{ color: "var(--text)" }}>{selectedPlayerModal.reportDetails.recommendation}</span>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+                  Detailed video metrics will populate once newly submitted trial clips are processed.
+                </p>
+              )}
+
+              {/* Shortlist Action */}
+              <button
+                onClick={() => {
+                  handleShortlistClick(selectedPlayerModal.id);
+                  setSelectedPlayerModal(null);
+                }}
+                className={shortlist.includes(selectedPlayerModal.id) ? "btn-secondary" : "btn-primary"}
+                style={{
+                  marginTop: "24px",
+                  width: "100%",
+                  padding: "10px",
+                  fontSize: "13px",
+                }}
+              >
+                <Bookmark size={15} />
+                {shortlist.includes(selectedPlayerModal.id) ? "Remove from Shortlist" : "Add to Official Combine Shortlist"}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

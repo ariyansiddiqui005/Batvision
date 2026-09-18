@@ -1,11 +1,12 @@
-import React from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Home, User, Search, Calendar, LogOut, LogIn } from "lucide-react";
 
 function Navbar({ activeTab, setActiveTab, shortlistCount, currentUser, onOpenAuthModal, onLogout }) {
   const navItems = [
-    { id: "home", label: "🏠 Home" },
-    { id: "player", label: "🏏 Player Portal" },
-    { id: "scout", label: `🔎 Scout Feed ${shortlistCount > 0 ? `(${shortlistCount})` : ""}` },
-    { id: "trials", label: "🏆 Trials & Events" },
+    { id: "home", label: "Overview", icon: Home },
+    { id: "player", label: "Player Portal", icon: User },
+    { id: "scout", label: "Scout Feed", icon: Search, badge: shortlistCount },
+    { id: "trials", label: "Trials & Combine", icon: Calendar },
   ];
 
   return (
@@ -14,18 +15,15 @@ function Navbar({ activeTab, setActiveTab, shortlistCount, currentUser, onOpenAu
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "16px 28px",
-        background: "rgba(255, 255, 255, 0.85)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(16, 185, 129, 0.15)",
-        boxShadow: "0 4px 20px -2px rgba(16, 185, 129, 0.05)",
+        padding: "16px 24px",
+        background: "var(--surface)",
+        borderBottom: "1px solid var(--border)",
         position: "sticky",
         top: 0,
         zIndex: 100,
       }}
     >
-      {/* Brand Logo */}
+      {/* Brand Identity: Professional, Editorial Sports Lockup */}
       <div
         onClick={() => setActiveTab("home")}
         style={{
@@ -33,115 +31,208 @@ function Navbar({ activeTab, setActiveTab, shortlistCount, currentUser, onOpenAu
           display: "flex",
           alignItems: "center",
           gap: "12px",
+          userSelect: "none",
         }}
       >
         <div
           style={{
-            width: "42px",
-            height: "42px",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+            width: "32px",
+            height: "32px",
+            borderRadius: "6px",
+            background: "var(--text-h)",
+            color: "#ffffff",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "22px",
-            boxShadow: "0 4px 14px rgba(16, 185, 129, 0.35)",
-            border: "1px solid rgba(255, 255, 255, 0.4)",
+            fontWeight: "800",
+            fontSize: "14px",
+            letterSpacing: "0.5px",
           }}
         >
-          🏏
+          BV
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "800", color: "#0f172a", letterSpacing: "-0.5px" }}>
-            BatVision<span style={{ color: "#10b981" }}>.ai</span>
-          </h2>
-          <p style={{ margin: 0, fontSize: "11px", fontWeight: "600", color: "#059669", letterSpacing: "0.2px" }}>
-            AI Cricket Scouting Platform
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span
+              style={{
+                fontSize: "18px",
+                fontWeight: "800",
+                color: "var(--text-h)",
+                letterSpacing: "-0.03em",
+                textTransform: "uppercase",
+              }}
+            >
+              BatVision
+            </span>
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: "700",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                padding: "2px 6px",
+                borderRadius: "3px",
+                background: "var(--surface-subtle)",
+                color: "var(--text-muted)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              Scouting
+            </span>
+          </div>
+          <p
+            style={{
+              fontSize: "11px",
+              color: "var(--text-muted)",
+              letterSpacing: "0.02em",
+              margin: 0,
+            }}
+          >
+            Cricket Talent Discovery Platform
           </p>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <nav style={{ display: "flex", gap: "8px" }}>
+      <nav style={{ display: "flex", gap: "4px", position: "relative" }}>
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
+          const Icon = item.icon;
+
           return (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               style={{
-                background: isActive ? "rgba(16, 185, 129, 0.12)" : "transparent",
-                color: isActive ? "#047857" : "#475569",
-                border: `1px solid ${isActive ? "rgba(16, 185, 129, 0.35)" : "transparent"}`,
-                borderRadius: "10px",
-                padding: "8px 16px",
-                fontSize: "14px",
-                fontWeight: isActive ? "700" : "500",
+                position: "relative",
+                background: "transparent",
+                color: isActive ? "var(--text-h)" : "var(--text-muted)",
+                border: "none",
+                borderRadius: "6px",
+                padding: "8px 14px",
+                fontSize: "13px",
+                fontWeight: isActive ? "600" : "500",
                 cursor: "pointer",
-                transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-                boxShadow: isActive ? "0 2px 8px rgba(16, 185, 129, 0.12)" : "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "color 0.15s ease",
               }}
             >
-              {item.label}
+              {isActive && (
+                <motion.div
+                  layoutId="navbar-active-pill"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "6px",
+                    background: "var(--surface-subtle)",
+                    border: "1px solid var(--border-strong)",
+                    zIndex: 0,
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 500,
+                    damping: 38,
+                  }}
+                />
+              )}
+
+              <span
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <Icon size={15} strokeWidth={isActive ? 2.2 : 1.8} />
+                {item.label}
+
+                {item.badge !== undefined && item.badge > 0 && (
+                  <AnimatePresence>
+                    <motion.span
+                      key={item.badge}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.8, opacity: 0 }}
+                      style={{
+                        background: "var(--accent)",
+                        color: "#ffffff",
+                        borderRadius: "10px",
+                        padding: "1px 6px",
+                        fontSize: "10px",
+                        fontWeight: "700",
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
+                      {item.badge}
+                    </motion.span>
+                  </AnimatePresence>
+                )}
+              </span>
             </button>
           );
         })}
       </nav>
 
-      {/* Auth / Account Controls */}
+      {/* Account / Session Status */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         {currentUser ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                padding: "4px 12px 4px 6px",
-                borderRadius: "24px",
-                background: "rgba(241, 245, 249, 0.8)",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                background: "var(--surface-subtle)",
                 border: "1px solid var(--border)",
               }}
             >
               <div
                 style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  background: currentUser.role === "player" ? "#10b981" : "#0284c7",
-                  color: "#fff",
+                  width: "22px",
+                  height: "22px",
+                  borderRadius: "4px",
+                  background: currentUser.role === "player" ? "var(--accent)" : "var(--text-h)",
+                  color: "#ffffff",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "12px",
-                  fontWeight: "bold",
+                  fontSize: "11px",
+                  fontWeight: "700",
                 }}
               >
-                {currentUser.name.charAt(0)}
+                {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : "U"}
               </div>
               <div style={{ fontSize: "12px", textAlign: "left" }}>
-                <strong style={{ color: "#0f172a" }}>{currentUser.name}</strong>
+                <span style={{ fontWeight: "600", color: "var(--text-h)" }}>{currentUser.name}</span>
                 <span
                   style={{
-                    display: "block",
+                    display: "inline-block",
+                    marginLeft: "6px",
                     fontSize: "10px",
-                    color: currentUser.role === "player" ? "#059669" : "#0284c7",
-                    fontWeight: "700",
+                    color: "var(--text-muted)",
                     textTransform: "uppercase",
+                    fontWeight: "600",
                   }}
                 >
-                  {currentUser.role}
+                  ({currentUser.role})
                 </span>
               </div>
             </div>
 
             <button
               onClick={onLogout}
-              className="btn-glass"
-              style={{ padding: "6px 12px", fontSize: "12px" }}
+              className="btn-subtle"
+              style={{ padding: "6px 10px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "5px" }}
               title="Sign Out"
             >
-              Log Out
+              <LogOut size={13} />
+              Sign Out
             </button>
           </div>
         ) : (
@@ -149,21 +240,19 @@ function Navbar({ activeTab, setActiveTab, shortlistCount, currentUser, onOpenAu
             <span
               style={{
                 fontSize: "12px",
-                padding: "4px 10px",
-                borderRadius: "12px",
-                background: "rgba(100, 116, 139, 0.1)",
-                color: "#64748b",
-                fontWeight: "600",
+                color: "var(--text-muted)",
+                fontWeight: "500",
               }}
             >
-              Guest View
+              Guest
             </span>
             <button
-              onClick={() => onOpenAuthModal("player", "Sign in to access your cricket profile and upload videos.")}
-              className="btn-green"
-              style={{ padding: "7px 16px", fontSize: "13px" }}
+              onClick={() => onOpenAuthModal("player", "Sign in to access your cricket profile and upload match footage.")}
+              className="btn-primary"
+              style={{ padding: "7px 14px", fontSize: "13px" }}
             >
-              Sign In / Register
+              <LogIn size={14} />
+              Sign In
             </button>
           </div>
         )}
