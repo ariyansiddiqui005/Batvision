@@ -6,7 +6,7 @@ from mysql.connector import Error
 # Database connection configuration (configurable via environment variables)
 DB_HOST = os.environ.get("DB_HOST", "127.0.0.1")
 DB_USER = os.environ.get("DB_USER", "root")
-DB_PASS = os.environ.get("DB_PASS", "")
+DB_PASS = os.environ.get("DB_PASS", "root")
 DB_NAME = os.environ.get("DB_NAME", "batvision")
 
 # -------------------------------------------------------------
@@ -116,6 +116,19 @@ IN_MEMORY_SCORES = [
         "areas_for_improvement": ["Release consistency drops during high-pressure spells"],
         "recommendation": "Well-balanced all-round profile for franchise scout shortlists."
     }
+]
+
+IN_MEMORY_SCOUTS = [
+    {
+        "id": 1,
+        "name": "Coach Vikram",
+        "email": "vikram@cricket.in",
+        "organization": "National Cricket Academy"
+    }
+]
+
+IN_MEMORY_SHORTLISTS = [
+    {"scout_identifier": "vikram@cricket.in", "player_id": 2}
 ]
 
 
@@ -594,3 +607,171 @@ def get_player_by_email(email):
         }
 
     return None
+
+
+def save_scout_profile(data):
+    """Inserts or updates a scout profile in MySQL and in-memory fallback."""
+    name = data.get("name", "Scout User").strip()
+    email = data.get("email", "").strip().lower()
+    organization = data.get("organization", "State Cricket Academy").strip()
+    scout_id = data.get("id")
+
+    assigned_id = None
+    conn = get_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS scouts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    email VARCHAR(120) UNIQUE NOT NULL,
+                    organization VARCHAR(150) DEFAULT 'State Cricket Academy',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            if scout_id and str(scout_id).isdigit():
+                cursor.execute("""
+                    UPDATE scouts SET name=%s, organization=%s WHERE id=%s
+                """, (name, organization, int(scout_id)))
+                conn.commit()
+                assigned_id = int(scout_id)
+            elif email:
+                cursor.execute("SELECT id FROM scouts WHERE LOWER(email) = %s LIMIT 1", (email,))
+                row = cursor.fetchone()
+                if row:
+                    assigned_id = row[0]
+                    cursor.execute("""
+                        UPDATE scouts SET name=%s, organization=%s WHERE id=%s
+                    """, (name, organization, assigned_id))
+                    conn.commit()
+                else:
+                    cursor.execute("""
+                        INSERT INTO scouts (name, email, organization) VALUES (%s, %s, %s)
+                    """, (name, email, organization))
+                    conn.commit()
+                    assigned_id = cursor.lastrowid
+            cursor.close()
+            conn.close()
+        except Error as e:
+            print(f"[BatVision DB] Scout save notice ({e}). Syncing in-memory.")
+
+    if not assigned_id:
+        if scout_id and str(scout_id).isdigit():
+            assigned_id = int(scout_id)
+        elif email:
+            existing = next((s for s in IN_MEMORY_SCOUTS if s["email"].lower() == email), None)
+            if existing:
+                assigned_id = existing["id"]
+        if not assigned_id:
+            assigned_id = max([s["id"] for s in IN_MEMORY_SCOUTS], default=100) + 1
+
+    # Sync to IN_MEMORY_SCOUTS
+    found = False
+    for s in IN_MEMORY_SCOUTS:
+        if s["id"] == assigned_id or (email and s["email"].lower() == email):
+            s["id"] = assigned_id
+            s["name"] = name
+            s["email"] = email
+            s["organization"] = organization
+            found = True
+            break
+    if not found:
+        IN_MEMORY_SCOUTS.append({
+            "id": assigned_id,
+            "name": name,
+            "email": email,
+            "organization": organization
+        })
+
+    return assigned_id
+
+
+def get_scout_by_email(email):
+    """Retrieves a scout by email from MySQL or in-memory fallback."""
+    cleaned = email.strip().lower()
+    conn = get_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM scouts WHERE LOWER(email) = %s LIMIT 1", (cleaned,))
+            scout = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            if scout:
+                return {
+                    "id": scout["id"],
+                    "name": scout["name"],
+                    "email": scout["email"],
+                    "role": "scout",
+                    "organization": scout["organization"]
+                }
+        except Error as e:
+            print(f"[BatVision DB] Scout lookup error: {e}")
+
+    # Fallback to in-memory
+    match = next((s for s in IN_MEMORY_SCOUTS if s["email"].lower() == cleaned), None)
+    if match:
+        return {
+            "id": match["id"],
+            "name": match["name"],
+            "email": match["email"],
+            "role": "scout",
+            "organization": match["organization"]
+        }
+    return None
+
+
+def get_shortlists_by_scout(scout_identifier):
+    """Returns a list of player_ids shortlisted by the scout."""
+    scout_id = str(scout_identifier).strip().lower()
+    conn = get_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT player_id FROM shortlists WHERE LOWER(scout_identifier) = %s", (scout_id,))
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return [r[0] for r in rows]
+        except Error as e:
+            print(f"[BatVision DB] Shortlist lookup error: {e}")
+
+    # Fallback to in-memory
+    return [s["player_id"] for s in IN_MEMORY_SHORTLISTS if s["scout_identifier"].lower() == scout_id]
+
+
+def toggle_shortlist(scout_identifier, player_id):
+    """Adds or removes a player from a scout's shortlist in MySQL and in-memory."""
+    scout_id = str(scout_identifier).strip().lower()
+    pid = int(player_id)
+    is_shortlisted = False
+
+    conn = get_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM shortlists WHERE LOWER(scout_identifier) = %s AND player_id = %s", (scout_id, pid))
+            row = cursor.fetchone()
+            if row:
+                cursor.execute("DELETE FROM shortlists WHERE id = %s", (row[0],))
+                is_shortlisted = False
+            else:
+                cursor.execute("INSERT INTO shortlists (scout_identifier, player_id) VALUES (%s, %s)", (scout_id, pid))
+                is_shortlisted = True
+            conn.commit()
+            cursor.close()
+            conn.close()
+        except Error as e:
+            print(f"[BatVision DB] Toggle shortlist error: {e}")
+
+    # Sync in-memory
+    existing_idx = next((i for i, s in enumerate(IN_MEMORY_SHORTLISTS) if s["scout_identifier"].lower() == scout_id and s["player_id"] == pid), None)
+    if existing_idx is not None:
+        IN_MEMORY_SHORTLISTS.pop(existing_idx)
+        is_shortlisted = False
+    else:
+        IN_MEMORY_SHORTLISTS.append({"scout_identifier": scout_id, "player_id": pid})
+        is_shortlisted = True
+
+    return is_shortlisted

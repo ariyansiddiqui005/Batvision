@@ -7,7 +7,8 @@ import db
 app = Flask(__name__)
 CORS(app)
 
-UPLOAD_FOLDER = "../uploads"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "..", "uploads"))
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -41,6 +42,46 @@ def save_player():
     return jsonify({
         "message": "Player profile updated successfully!",
         "player_id": player_id
+    })
+
+
+@app.route("/api/scouts", methods=["POST"])
+def save_scout():
+    """Creates or updates a scout profile in MySQL."""
+    data = request.json or {}
+    scout_id = db.save_scout_profile(data)
+    return jsonify({
+        "message": "Scout profile updated successfully!",
+        "scout_id": scout_id
+    })
+
+
+@app.route("/api/shortlists", methods=["GET"])
+def get_shortlists():
+    """Returns player IDs bookmarked by a specific scout."""
+    scout_id = request.args.get("scout_identifier", "").strip()
+    if not scout_id:
+        return jsonify({"shortlists": []})
+    shortlists = db.get_shortlists_by_scout(scout_id)
+    return jsonify({"shortlists": shortlists})
+
+
+@app.route("/api/shortlists/toggle", methods=["POST"])
+def toggle_shortlist():
+    """Toggles a player bookmark for a scout."""
+    data = request.json or {}
+    scout_id = data.get("scout_identifier", "").strip()
+    player_id = data.get("player_id")
+    if not scout_id or player_id is None:
+        return jsonify({"error": "scout_identifier and player_id are required"}), 400
+
+    is_shortlisted = db.toggle_shortlist(scout_id, player_id)
+    shortlists = db.get_shortlists_by_scout(scout_id)
+    return jsonify({
+        "message": "Player added to shortlist" if is_shortlisted else "Player removed from shortlist",
+        "player_id": player_id,
+        "is_shortlisted": is_shortlisted,
+        "shortlists": shortlists
     })
 
 
@@ -92,17 +133,24 @@ def login():
             })
     else:
         # Scout login
-        scout_name = email.split("@")[0].replace(".", " ").title()
-        return jsonify({
-            "message": f"Welcome, {scout_name}!",
-            "user": {
-                "id": f"s-{abs(hash(email)) % 10000}",
-                "name": scout_name,
-                "email": email,
-                "role": "scout",
-                "organization": "State Cricket Academy"
-            }
-        })
+        res = db.get_scout_by_email(email)
+        if res:
+            return jsonify({
+                "message": f"Welcome back, {res['name']}!",
+                "user": res
+            })
+        else:
+            scout_name = email.split("@")[0].replace(".", " ").title()
+            return jsonify({
+                "message": f"Welcome, {scout_name}!",
+                "user": {
+                    "id": f"s-{abs(hash(email)) % 10000}",
+                    "name": scout_name,
+                    "email": email,
+                    "role": "scout",
+                    "organization": "State Cricket Academy"
+                }
+            })
 
 
 @app.route("/api/upload", methods=["POST"])

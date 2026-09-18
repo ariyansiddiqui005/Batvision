@@ -99,6 +99,21 @@ function AuthModal({ isOpen, onClose, initialRole = "player", onLoginSuccess, au
         if (data && data.player_id) {
           registeredId = data.player_id;
         }
+      } else if (selectedRole === "scout") {
+        const payload = {
+          name: name.trim(),
+          email: email.trim(),
+          organization: organization.trim() || "State Cricket Academy"
+        };
+        const res = await fetch("http://127.0.0.1:5000/api/scouts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data && data.scout_id) {
+          registeredId = data.scout_id;
+        }
       }
 
       setIsLoading(false);

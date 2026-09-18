@@ -55,7 +55,20 @@ function App() {
   });
 
   // Scout Watchlist / Shortlist
-  const [shortlist, setShortlist] = useState([2]);
+  const [shortlist, setShortlist] = useState([]);
+
+  const fetchShortlists = async (scoutId) => {
+    if (!scoutId) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/api/shortlists?scout_identifier=${encodeURIComponent(scoutId)}`);
+      const data = await res.json();
+      if (data && Array.isArray(data.shortlists)) {
+        setShortlist(data.shortlists);
+      }
+    } catch (e) {
+      console.log("Using local shortlist state.");
+    }
+  };
 
   const openAuthModal = (role = "player", reason = "") => {
     setAuthModalRole(role);
@@ -65,6 +78,10 @@ function App() {
 
   const handleLoginSuccess = async (user, scores = null) => {
     setCurrentUser(user);
+
+    // Fetch user's persistent shortlist from MySQL
+    fetchShortlists(user.email || user.id);
+
     if (user.role === "player") {
       const updatedProfile = {
         ...playerProfile,
@@ -112,6 +129,7 @@ function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setShortlist([]);
     setPlayerScores({
       batting: null,
       bowling: null,
@@ -128,11 +146,26 @@ function App() {
     setActiveTab("home");
   };
 
-  const toggleShortlist = (playerId) => {
-    if (shortlist.includes(playerId)) {
-      setShortlist(shortlist.filter((id) => id !== playerId));
-    } else {
-      setShortlist([...shortlist, playerId]);
+  const toggleShortlist = async (playerId) => {
+    // Optimistic local UI update
+    const isCurrently = shortlist.includes(playerId);
+    const updated = isCurrently ? shortlist.filter((id) => id !== playerId) : [...shortlist, playerId];
+    setShortlist(updated);
+
+    // Persist to MySQL backend
+    const scoutId = currentUser?.email || currentUser?.id || "guest_scout";
+    try {
+      const res = await fetch("http://127.0.0.1:5000/api/shortlists/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scout_identifier: scoutId, player_id: playerId }),
+      });
+      const data = await res.json();
+      if (data && Array.isArray(data.shortlists)) {
+        setShortlist(data.shortlists);
+      }
+    } catch (e) {
+      console.log("Shortlist updated locally.");
     }
   };
 

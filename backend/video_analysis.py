@@ -1,9 +1,11 @@
+import os
 import cv2
 import math
 from ultralytics import YOLO
 
 # Initialize YOLOv8 nano model (fast and lightweight for CPU)
-model = YOLO("yolov8n.pt")
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "yolov8n.pt")
+model = YOLO(MODEL_PATH if os.path.exists(MODEL_PATH) else "yolov8n.pt")
 
 
 def get_classification(score):

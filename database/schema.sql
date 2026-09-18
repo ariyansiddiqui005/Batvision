@@ -56,6 +56,15 @@ CREATE TABLE IF NOT EXISTS shortlists (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+-- 5. Scouts Table
+CREATE TABLE IF NOT EXISTS scouts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(120) UNIQUE NOT NULL,
+    organization VARCHAR(150) DEFAULT 'State Cricket Academy',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- -------------------------------------------------------------
 -- Seed Data: Pre-populate initial cricket talent prospects
 -- -------------------------------------------------------------
