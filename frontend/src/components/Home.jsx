@@ -1,11 +1,4 @@
-import {
-  ArrowRight,
-  UserCheck,
-  Upload,
-  Cpu,
-  BarChart2,
-  BookmarkCheck,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import AnimatedCard from "./ui/AnimatedCard";
 
 function Home({ setActiveTab, players = [] }) {
@@ -31,37 +24,27 @@ function Home({ setActiveTab, players = [] }) {
     {
       step: "01",
       title: "CREATE PROFILE",
-      desc: "Player sets up an official cricket profile specifying primary playing role, batting stance, bowling discipline, and domestic region.",
-      icon: UserCheck,
-      badge: "Player Setup",
+      desc: "Set up role, playing style, and domestic region.",
     },
     {
       step: "02",
       title: "UPLOAD VIDEO",
-      desc: "Player uploads net session or match footage (MP4 or MOV). Raw frames are prepared for automated frame-by-frame analysis.",
-      icon: Upload,
-      badge: "Video Ingestion",
+      desc: "Upload net sessions or match footage in MP4 or MOV.",
     },
     {
       step: "03",
       title: "AI ANALYSIS",
-      desc: "YOLO computer vision tracks player movement, stance balance, and body alignment across sampled video frames.",
-      icon: Cpu,
-      badge: "Computer Vision",
+      desc: "AI tracks movement, balance, and key biomechanics.",
     },
     {
       step: "04",
       title: "PERFORMANCE SCORE",
-      desc: "Raw video tracking is converted into objective batting and bowling scores out of 100, combined into an overall scouting index.",
-      icon: BarChart2,
-      badge: "Scoring Engine",
+      desc: "Get objective 0–100 ratings and diagnostic scores.",
     },
     {
       step: "05",
       title: "GET DISCOVERED",
-      desc: "State scouts, academy coaches, and franchise selectors inspect performance dossiers and shortlist talent for upcoming trials.",
-      icon: BookmarkCheck,
-      badge: "Scout Recruitment",
+      desc: "Selectors review dossiers and shortlist for upcoming trials.",
     },
   ];
 
@@ -81,27 +64,6 @@ function Home({ setActiveTab, players = [] }) {
         
         {/* Left Column: Bold Editorial Statement */}
         <div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: "700",
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: "var(--accent-dark)",
-                background: "var(--accent-subtle)",
-                border: "1px solid var(--accent-border)",
-                padding: "3px 8px",
-                borderRadius: "4px",
-              }}
-            >
-              BatVision System
-            </span>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: "500" }}>
-              Cricket Talent Identification
-            </span>
-          </div>
-
           <h1
             style={{
               fontSize: "clamp(36px, 5vw, 54px)",
@@ -126,8 +88,7 @@ function Home({ setActiveTab, players = [] }) {
               maxWidth: "520px",
             }}
           >
-            Players upload batting or bowling match videos. BatVision analyzes performance mechanics
-            and provides selectors with measurable, objective information to evaluate talent.
+            Upload match footage for instant biomechanical analysis and objective talent scoring.
           </p>
 
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
@@ -147,42 +108,6 @@ function Home({ setActiveTab, players = [] }) {
             >
               Get Evaluated
             </button>
-          </div>
-
-          {/* Quick Credibility Footnote */}
-          <div
-            style={{
-              display: "flex",
-              gap: "24px",
-              marginTop: "40px",
-              paddingTop: "24px",
-              borderTop: "1px solid var(--border)",
-            }}
-          >
-            <div>
-              <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-h)" }}>
-                50 / 50
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Bat & Bowl Index
-              </div>
-            </div>
-            <div>
-              <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-h)" }}>
-                YOLO
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Computer Vision
-              </div>
-            </div>
-            <div>
-              <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-h)" }}>
-                Direct
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Scout Shortlists
-              </div>
-            </div>
           </div>
         </div>
 
@@ -227,9 +152,6 @@ function Home({ setActiveTab, players = [] }) {
                 </div>
 
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    {topPlayer.overallScore ? "Scouting Score" : (topPlayer.role === "Bowler" ? "Bowling Rating" : (topPlayer.role === "Batsman" ? "Batting Rating" : "Scouting Score"))}
-                  </div>
                   <div className="mono-num" style={{ fontSize: "32px", fontWeight: "800", color: "var(--accent-dark)", lineHeight: "1" }}>
                     {topScore}
                   </div>
@@ -250,7 +172,7 @@ function Home({ setActiveTab, players = [] }) {
                   }}
                 >
                   <div style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>
-                    Batting Performance
+                    Batting
                   </div>
                   <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-h)", marginTop: "4px" }}>
                     {topPlayer.battingScore ? (
@@ -258,11 +180,8 @@ function Home({ setActiveTab, players = [] }) {
                         {topPlayer.battingScore} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>/ 100</span>
                       </>
                     ) : (
-                      <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "500" }}>Specialist Bowler</span>
+                      <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "500" }}>—</span>
                     )}
-                  </div>
-                  <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
-                    {topPlayer.battingScore ? `Classification: ${topPlayer.classification || "Verified"}` : "Focused Bowling Discipline"}
                   </div>
                 </div>
 
@@ -275,7 +194,7 @@ function Home({ setActiveTab, players = [] }) {
                   }}
                 >
                   <div style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>
-                    Bowling Performance
+                    Bowling
                   </div>
                   <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-h)", marginTop: "4px" }}>
                     {topPlayer.bowlingScore ? (
@@ -283,27 +202,21 @@ function Home({ setActiveTab, players = [] }) {
                         {topPlayer.bowlingScore} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>/ 100</span>
                       </>
                     ) : (
-                      <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "500" }}>Specialist Batsman</span>
+                      <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "500" }}>—</span>
                     )}
-                  </div>
-                  <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
-                    {topPlayer.bowlingScore ? `Classification: ${topPlayer.classification || "Verified"}` : "Focused Batting Discipline"}
                   </div>
                 </div>
               </div>
 
-              {/* Biomechanical Telemetry Rows */}
+              {/* Telemetry Rows */}
               <div style={{ marginBottom: "20px" }}>
-                <div style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-h)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "10px" }}>
-                  Verified Video Telemetry
-                </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   {topPlayer.role === "Bowler" ? (
                     <>
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "3px" }}>
-                          <span style={{ color: "var(--text)" }}>Run-Up Momentum & Stride Pace</span>
+                          <span style={{ color: "var(--text)" }}>Run-Up Momentum</span>
                           <span className="mono-num" style={{ fontWeight: "700", color: "var(--text-h)" }}>{Math.min(topScore + 2, 96)}%</span>
                         </div>
                         <div style={{ height: "4px", background: "var(--border)", borderRadius: "2px", overflow: "hidden" }}>
@@ -313,7 +226,7 @@ function Home({ setActiveTab, players = [] }) {
 
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "3px" }}>
-                          <span style={{ color: "var(--text)" }}>High-Arm Release Point Stability</span>
+                          <span style={{ color: "var(--text)" }}>Release Stability</span>
                           <span className="mono-num" style={{ fontWeight: "700", color: "var(--text-h)" }}>{topScore}%</span>
                         </div>
                         <div style={{ height: "4px", background: "var(--border)", borderRadius: "2px", overflow: "hidden" }}>
@@ -323,7 +236,7 @@ function Home({ setActiveTab, players = [] }) {
 
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "3px" }}>
-                          <span style={{ color: "var(--text)" }}>Follow-Through Deceleration Control</span>
+                          <span style={{ color: "var(--text)" }}>Follow-Through</span>
                           <span className="mono-num" style={{ fontWeight: "700", color: "var(--text-h)" }}>{Math.max(topScore - 4, 80)}%</span>
                         </div>
                         <div style={{ height: "4px", background: "var(--border)", borderRadius: "2px", overflow: "hidden" }}>
@@ -335,7 +248,7 @@ function Home({ setActiveTab, players = [] }) {
                     <>
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "3px" }}>
-                          <span style={{ color: "var(--text)" }}>Head Stability at Contact</span>
+                          <span style={{ color: "var(--text)" }}>Head Stability</span>
                           <span className="mono-num" style={{ fontWeight: "700", color: "var(--text-h)" }}>{Math.min(topScore + 2, 96)}%</span>
                         </div>
                         <div style={{ height: "4px", background: "var(--border)", borderRadius: "2px", overflow: "hidden" }}>
@@ -355,7 +268,7 @@ function Home({ setActiveTab, players = [] }) {
 
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "3px" }}>
-                          <span style={{ color: "var(--text)" }}>Weight Transfer & Follow-Through</span>
+                          <span style={{ color: "var(--text)" }}>Weight Transfer</span>
                           <span className="mono-num" style={{ fontWeight: "700", color: "var(--text-h)" }}>{Math.max(topScore - 3, 80)}%</span>
                         </div>
                         <div style={{ height: "4px", background: "var(--border)", borderRadius: "2px", overflow: "hidden" }}>
@@ -371,15 +284,12 @@ function Home({ setActiveTab, players = [] }) {
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
+                  justifyContent: "flex-end",
                   alignItems: "center",
                   paddingTop: "14px",
                   borderTop: "1px solid var(--border)",
                 }}
               >
-                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                  Prospect ID: #BV-{topPlayer.id} • Live on Scout Feed
-                </span>
                 <button
                   onClick={() => setActiveTab("scout")}
                   className="btn-secondary"
@@ -401,20 +311,13 @@ function Home({ setActiveTab, players = [] }) {
       {/* SECTION 2: HOW BATVISION WORKS (CONCRETE 5-STEP PIPELINE) */}
       <section style={{ marginBottom: "80px" }}>
         <div style={{ marginBottom: "32px", borderBottom: "1px solid var(--border)", paddingBottom: "16px" }}>
-          <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent-dark)" }}>
-            Process
-          </span>
-          <h2 style={{ fontSize: "28px", fontWeight: "800", color: "var(--text-h)", marginTop: "4px" }}>
+          <h2 style={{ fontSize: "28px", fontWeight: "800", color: "var(--text-h)" }}>
             HOW BATVISION WORKS
           </h2>
-          <p style={{ fontSize: "14px", color: "var(--text-muted)", marginTop: "6px" }}>
-            An end-to-end evaluation pipeline connecting player footage to measurable selector reports.
-          </p>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
           {workflowSteps.map((s) => {
-            const Icon = s.icon;
             return (
               <div
                 key={s.step}
@@ -427,12 +330,9 @@ function Home({ setActiveTab, players = [] }) {
                 }}
               >
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                  <div style={{ marginBottom: "16px" }}>
                     <span className="mono-num" style={{ fontSize: "13px", fontWeight: "700", color: "var(--accent-dark)" }}>
                       {s.step}
-                    </span>
-                    <span style={{ fontSize: "10px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)", background: "var(--surface-subtle)", padding: "2px 6px", borderRadius: "3px" }}>
-                      {s.badge}
                     </span>
                   </div>
 
@@ -444,11 +344,6 @@ function Home({ setActiveTab, players = [] }) {
                     {s.desc}
                   </p>
                 </div>
-
-                <div style={{ marginTop: "20px", paddingTop: "12px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "6px", color: "var(--text-muted)", fontSize: "12px" }}>
-                  <Icon size={14} color="var(--accent-dark)" />
-                  <span>Step {s.step} Complete</span>
-                </div>
               </div>
             );
           })}
@@ -458,15 +353,9 @@ function Home({ setActiveTab, players = [] }) {
       {/* SECTION 3: RESTRAINED STANDARDS & BENCHMARKS TABLE */}
       <section style={{ marginBottom: "80px" }}>
         <div style={{ marginBottom: "24px" }}>
-          <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent-dark)" }}>
-            Scoring Criteria
-          </span>
-          <h2 style={{ fontSize: "28px", fontWeight: "800", color: "var(--text-h)", marginTop: "4px" }}>
+          <h2 style={{ fontSize: "28px", fontWeight: "800", color: "var(--text-h)" }}>
             EVALUATION CLASSIFICATIONS
           </h2>
-          <p style={{ fontSize: "14px", color: "var(--text-muted)", marginTop: "4px" }}>
-            Standardized benchmarks used to rank batting and bowling executions.
-          </p>
         </div>
 
         <div className="sports-card" style={{ overflowX: "auto" }}>
@@ -558,9 +447,6 @@ function Home({ setActiveTab, players = [] }) {
           }}
         >
           <div>
-            <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--accent-dark)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "8px" }}>
-              For Players
-            </div>
             <h3 style={{ fontSize: "22px", fontWeight: "800", color: "var(--text-h)", marginBottom: "12px" }}>
               Upload match footage and receive an evaluation.
             </h3>
@@ -588,9 +474,6 @@ function Home({ setActiveTab, players = [] }) {
           }}
         >
           <div>
-            <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "8px" }}>
-              For Scouts & Selectors
-            </div>
             <h3 style={{ fontSize: "22px", fontWeight: "800", color: "var(--text-h)", marginBottom: "12px" }}>
               Filter prospects by location, style, and score.
             </h3>

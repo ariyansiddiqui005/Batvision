@@ -105,14 +105,11 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
       {/* Directory Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "28px", flexWrap: "wrap", gap: "16px" }}>
         <div>
-          <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent-dark)" }}>
-            Talent Discovery
-          </span>
-          <h1 style={{ fontSize: "30px", fontWeight: "900", color: "var(--text-h)", marginTop: "4px" }}>
-            CRICKET PROSPECT FEED
+          <h1 style={{ fontSize: "30px", fontWeight: "900", color: "var(--text-h)" }}>
+            PROSPECT FEED
           </h1>
           <p style={{ fontSize: "14px", color: "var(--text-muted)", marginTop: "4px" }}>
-            Verified athlete dossiers evaluated via computer vision batting and bowling models.
+            Athlete dossiers evaluated with computer vision models.
           </p>
         </div>
 
@@ -122,7 +119,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
           style={{ fontSize: "13px", padding: "8px 16px" }}
         >
           <Bookmark size={15} />
-          {showShortlistOnly ? "Viewing Shortlisted Only" : `Shortlisted Prospects (${shortlist.length})`}
+          {showShortlistOnly ? "Shortlisted Only" : `Shortlisted (${shortlist.length})`}
         </button>
       </div>
 
@@ -142,7 +139,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
             <Search size={15} color="var(--text-muted)" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
             <input
               type="text"
-              placeholder="Search by prospect name, academy, or state..."
+              placeholder="Search by name, academy, or state..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="clean-input"
@@ -151,7 +148,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
           </div>
 
           <span style={{ fontSize: "12px", color: "var(--text-muted)", marginLeft: "auto" }}>
-            Showing <strong>{filteredPlayers.length}</strong> verified profiles
+            Showing <strong>{filteredPlayers.length}</strong> profiles
           </span>
         </div>
 
@@ -299,7 +296,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <div style={{ fontSize: "10px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                          COMBINED TALENT RANK
+                          COMBINED RANK
                         </div>
                         <div className="mono-num" style={{ fontSize: "28px", fontWeight: "900", color: "var(--text-h)", marginTop: "2px" }}>
                           {player.overallScore || "—"}
@@ -328,16 +325,16 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
                   {/* Component Breakdown (Batting & Bowling) */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "16px" }}>
                     <div style={{ padding: "8px 10px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px" }}>
-                      <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Batting Index</div>
+                      <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Batting</div>
                       <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
-                        {player.battingScore ? `${player.battingScore}` : "N/A"}
+                        {player.battingScore ? `${player.battingScore}` : "—"}
                       </div>
                     </div>
 
                     <div style={{ padding: "8px 10px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px" }}>
-                      <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Bowling Index</div>
+                      <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Bowling</div>
                       <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
-                        {player.bowlingScore ? `${player.bowlingScore}` : "N/A"}
+                        {player.bowlingScore ? `${player.bowlingScore}` : "—"}
                       </div>
                     </div>
                   </div>
@@ -361,7 +358,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
                   }}
                 >
                   <FileText size={13} />
-                  Inspect Talent Dossier
+                  Inspect Dossier
                   <ChevronRight size={13} />
                 </button>
               </div>
@@ -414,14 +411,11 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
               {/* Modal Header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px", borderBottom: "1px solid var(--border)", paddingBottom: "16px" }}>
                 <div>
-                  <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
-                    OFFICIAL PROSPECT DOSSIER
-                  </span>
-                  <h2 style={{ fontSize: "22px", fontWeight: "800", color: "var(--text-h)", marginTop: "2px" }}>
+                  <h2 style={{ fontSize: "22px", fontWeight: "800", color: "var(--text-h)" }}>
                     {selectedPlayerModal.name}
                   </h2>
                   <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "2px" }}>
-                    {selectedPlayerModal.role} • {selectedPlayerModal.location} • {selectedPlayerModal.age} Years Old
+                    {selectedPlayerModal.role} • {selectedPlayerModal.location} • {selectedPlayerModal.age} yrs
                   </p>
                 </div>
 
@@ -448,7 +442,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
               >
                 <div>
                   <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase" }}>
-                    Composite Score
+                    Overall Score
                   </div>
                   <div className="mono-num" style={{ fontSize: "32px", fontWeight: "900", color: "var(--text-h)" }}>
                     {selectedPlayerModal.overallScore ? `${selectedPlayerModal.overallScore}` : "Pending"}
@@ -478,7 +472,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   <div>
                     <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", color: "var(--accent-dark)", marginBottom: "6px" }}>
-                      Verified Technical Strengths
+                      Strengths
                     </div>
                     <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px", color: "var(--text)", lineHeight: "1.6" }}>
                       {selectedPlayerModal.reportDetails.strengths.map((s, idx) => (
@@ -489,7 +483,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
 
                   <div>
                     <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-h)", marginBottom: "6px" }}>
-                      Targeted Technical Refinements
+                      Areas to Improve
                     </div>
                     <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px", color: "var(--text)", lineHeight: "1.6" }}>
                       {selectedPlayerModal.reportDetails.improvements.map((imp, idx) => (
@@ -499,7 +493,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
                   </div>
 
                   <div style={{ background: "var(--surface-subtle)", padding: "12px 14px", borderRadius: "6px", fontSize: "13px", border: "1px solid var(--border)" }}>
-                    <span style={{ fontWeight: "700", color: "var(--text-h)" }}>Selector Recommendation: </span>
+                    <span style={{ fontWeight: "700", color: "var(--text-h)" }}>Recommendation: </span>
                     <span style={{ color: "var(--text)" }}>{selectedPlayerModal.reportDetails.recommendation}</span>
                   </div>
                 </div>
@@ -524,7 +518,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
                 }}
               >
                 <Bookmark size={15} />
-                {shortlist.includes(selectedPlayerModal.id) ? "Remove from Shortlist" : "Add to Official Combine Shortlist"}
+                {shortlist.includes(selectedPlayerModal.id) ? "Remove from Shortlist" : "Add to Shortlist"}
               </button>
             </motion.div>
           </motion.div>

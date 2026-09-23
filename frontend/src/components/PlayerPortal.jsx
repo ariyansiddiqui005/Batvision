@@ -159,11 +159,11 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-h)" }}>
-              DEMO ATHLETE PROFILE
+              DEMO PROFILE
             </span>
             <span style={{ color: "var(--border-strong)" }}>|</span>
             <p style={{ fontSize: "13px", color: "var(--text)" }}>
-              Sign in as a player to upload footage, track your official index, and appear on scout combines.
+              Sign in to save footage and track your official index.
             </p>
           </div>
           <button
@@ -225,18 +225,18 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
                   {playerProfile.role}
                 </span>
                 <span className="mono-num" style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                  ID: #{playerProfile.id || "BV-PROSPECT"}
+                  #{playerProfile.id || "BV-PROSPECT"}
                 </span>
               </div>
 
-              <div style={{ display: "flex", gap: "16px", marginTop: "8px", fontSize: "13px", color: "var(--text-muted)", flexWrap: "wrap" }}>
-                <span><strong>Age:</strong> {playerProfile.age}</span>
+              <div style={{ display: "flex", gap: "8px", marginTop: "8px", fontSize: "13px", color: "var(--text-muted)", flexWrap: "wrap" }}>
+                <span>{playerProfile.age} yrs</span>
                 <span>•</span>
-                <span><strong>Location:</strong> {playerProfile.location}</span>
+                <span>{playerProfile.location}</span>
                 <span>•</span>
-                <span><strong>Batting:</strong> {playerProfile.battingStyle}</span>
+                <span>{playerProfile.battingStyle}</span>
                 <span>•</span>
-                <span><strong>Bowling:</strong> {playerProfile.bowlingStyle}</span>
+                <span>{playerProfile.bowlingStyle}</span>
               </div>
             </div>
           </div>
@@ -361,10 +361,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
-                COMBINED TALENT RANK
-              </span>
-              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                50% Bat + 50% Bowl
+                COMBINED RANK
               </span>
             </div>
 
@@ -377,10 +374,10 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
                   <span style={{ fontSize: "16px", color: "var(--text-muted)", fontWeight: "600" }}>/ 100</span>
                 </div>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: getStatusColor(overallClassification), marginBottom: "16px" }}>
-                  Classification: {overallClassification}
+                  {overallClassification}
                 </div>
                 <p style={{ fontSize: "13px", color: "var(--text)", lineHeight: "1.5" }}>
-                  Standardized composite score based on verified batting and bowling video telemetry.
+                  Composite index across verified video evaluations.
                 </p>
               </div>
             ) : (
@@ -389,14 +386,14 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
                   Combined Score Locked
                 </p>
                 <p>
-                  Requires both Batting (50%) and Bowling (50%) video evaluations to compute an official combine rank.
+                  Requires both batting and bowling evaluations to compute a combine rank.
                 </p>
               </div>
             )}
           </div>
 
           <div style={{ marginTop: "20px", paddingTop: "14px", borderTop: "1px solid var(--border)", fontSize: "12px", color: "var(--text-muted)" }}>
-            Status: {hasBatting && hasBowling ? "Full Evaluation Complete" : "Partial Video Record"}
+            {hasBatting && hasBowling ? "Full Evaluation Complete" : "Partial Video Record"}
           </div>
         </div>
 
@@ -413,7 +410,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--accent-dark)" }}>
-                BATTING PERFORMANCE
+                BATTING
               </span>
               {hasBatting && (
                 <span
@@ -459,20 +456,36 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
                       {playerScores.batting.metrics?.batting_consistency}%
                     </span>
                   </div>
+                  {playerScores.batting.metrics?.lead_elbow_angle && (
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text-muted)" }}>Lead Elbow Angle</span>
+                      <span className="mono-num" style={{ fontWeight: "700", color: "var(--accent-dark)" }}>
+                        {playerScores.batting.metrics?.lead_elbow_angle}°
+                      </span>
+                    </div>
+                  )}
+                  {playerScores.batting.metrics?.front_knee_angle && (
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text-muted)" }}>Front Knee Flex</span>
+                      <span className="mono-num" style={{ fontWeight: "700", color: "var(--text-h)" }}>
+                        {playerScores.batting.metrics?.front_knee_angle}°
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
               <div style={{ padding: "16px 0", color: "var(--text-muted)", fontSize: "13px" }}>
                 <p style={{ fontWeight: "600", color: "var(--text-h)", marginBottom: "4px" }}>
-                  No Batting Analysis On File
+                  No Batting Record
                 </p>
-                <p>Upload a net or match video below to measure stance and execution.</p>
+                <p>Upload a video below to evaluate batting mechanics.</p>
               </div>
             )}
           </div>
 
           <div style={{ marginTop: "20px", paddingTop: "14px", borderTop: "1px solid var(--border)", fontSize: "12px", color: "var(--text-muted)" }}>
-            Weight: 50% of Combined Rank
+            50% Combine Weight
           </div>
         </div>
 
@@ -489,7 +502,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-h)" }}>
-                BOWLING PERFORMANCE
+                BOWLING
               </span>
               {hasBowling && (
                 <span
@@ -535,20 +548,36 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
                       {playerScores.bowling.metrics?.bowling_consistency}%
                     </span>
                   </div>
+                  {playerScores.bowling.metrics?.front_knee_brace_angle && (
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text-muted)" }}>Front-Leg Brace</span>
+                      <span className="mono-num" style={{ fontWeight: "700", color: "var(--accent-dark)" }}>
+                        {playerScores.bowling.metrics?.front_knee_brace_angle}°
+                      </span>
+                    </div>
+                  )}
+                  {playerScores.bowling.metrics?.arm_extension_angle && (
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text-muted)" }}>Arm Extension</span>
+                      <span className="mono-num" style={{ fontWeight: "700", color: "var(--text-h)" }}>
+                        {playerScores.bowling.metrics?.arm_extension_angle}°
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
               <div style={{ padding: "16px 0", color: "var(--text-muted)", fontSize: "13px" }}>
                 <p style={{ fontWeight: "600", color: "var(--text-h)", marginBottom: "4px" }}>
-                  No Bowling Analysis On File
+                  No Bowling Record
                 </p>
-                <p>Upload a bowling clip below to evaluate run-up and release mechanics.</p>
+                <p>Upload a video below to evaluate bowling mechanics.</p>
               </div>
             )}
           </div>
 
           <div style={{ marginTop: "20px", paddingTop: "14px", borderTop: "1px solid var(--border)", fontSize: "12px", color: "var(--text-muted)" }}>
-            Weight: 50% of Combined Rank
+            50% Combine Weight
           </div>
         </div>
 
@@ -565,14 +594,14 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
           <div>
             <h2 style={{ fontSize: "18px", fontWeight: "800", color: "var(--text-h)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              VIDEO ANALYSIS UPLOAD
+              UPLOAD VIDEO
             </h2>
             <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "4px" }}>
-              Upload side-on or front-on cricket footage to run automated pose stability analysis.
+              Upload match or net video for pose stability and execution analysis.
             </p>
           </div>
           <span style={{ fontSize: "11px", fontWeight: "600", color: "var(--text-muted)", background: "var(--surface-subtle)", padding: "3px 8px", borderRadius: "3px", border: "1px solid var(--border)" }}>
-            MP4 • MOV • AVI (Max 60fps)
+            MP4 • MOV • AVI
           </span>
         </div>
 
@@ -596,7 +625,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
           >
             <div style={{ fontWeight: "700" }}>Batting Video</div>
             <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
-              Stance balance, foot movement & execution
+              Stance balance & execution
             </div>
           </button>
 
@@ -618,7 +647,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
           >
             <div style={{ fontWeight: "700" }}>Bowling Video</div>
             <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
-              Run-up momentum & release point stability
+              Run-up & release mechanics
             </div>
           </button>
         </div>
@@ -668,7 +697,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
                 Drag and drop a cricket video, or <span style={{ color: "var(--accent-dark)", textDecoration: "underline" }}>browse files</span>
               </p>
               <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "4px" }}>
-                Side-view or pitch-level camera angle recommended
+                Side-on or pitch camera angle recommended
               </p>
             </div>
           )}
@@ -695,7 +724,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
           ) : (
             <>
               <Upload size={16} />
-              Run {analysisType === "batting" ? "Batting" : "Bowling"} Video Evaluation
+              Run {analysisType === "batting" ? "Batting" : "Bowling"} Evaluation
             </>
           )}
         </button>
@@ -738,11 +767,8 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
               <div>
-                <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
-                  ANALYSIS REPORT #BV-{playerProfile.id || "8842"}
-                </span>
-                <h3 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-h)", marginTop: "4px" }}>
-                  {currentAnalysis.performance.analysis_type === "batting" ? "Batting Evaluation Report" : "Bowling Evaluation Report"}
+                <h3 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-h)" }}>
+                  {currentAnalysis.performance.analysis_type === "batting" ? "Batting Report" : "Bowling Report"}
                 </h3>
               </div>
 
@@ -783,10 +809,10 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
               </div>
               <div style={{ borderLeft: "1px solid var(--border)", paddingLeft: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-h)" }}>
-                  Verified Performance Classification: {currentAnalysis.performance.classification}
+                  {currentAnalysis.performance.classification}
                 </div>
                 <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
-                  Calculated across {currentAnalysis.yolo_detection?.frames_analyzed || 60} sampled video frames.
+                  {currentAnalysis.yolo_detection?.frames_analyzed || 60} frames analyzed
                 </div>
               </div>
             </div>
@@ -794,11 +820,11 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
             {/* Breakdown Grid */}
             <div style={{ marginBottom: "24px" }}>
               <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "12px" }}>
-                Detailed Mechanical Breakdown
+                Mechanical Breakdown
               </div>
 
               {currentAnalysis.performance.analysis_type === "batting" ? (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
                   <div style={{ padding: "12px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "6px" }}>
                     <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Stance Stability</div>
                     <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-h)", marginTop: "4px" }}>
@@ -817,9 +843,25 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
                       {currentAnalysis.performance.metrics.batting_consistency}%
                     </div>
                   </div>
+                  {currentAnalysis.performance.metrics.lead_elbow_angle && (
+                    <div style={{ padding: "12px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "6px" }}>
+                      <div style={{ fontSize: "11px", color: "var(--accent-dark)", textTransform: "uppercase", fontWeight: "700" }}>Lead Elbow Angle</div>
+                      <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--accent-dark)", marginTop: "4px" }}>
+                        {currentAnalysis.performance.metrics.lead_elbow_angle}°
+                      </div>
+                    </div>
+                  )}
+                  {currentAnalysis.performance.metrics.front_knee_angle && (
+                    <div style={{ padding: "12px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "6px" }}>
+                      <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Front Knee Flex</div>
+                      <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-h)", marginTop: "4px" }}>
+                        {currentAnalysis.performance.metrics.front_knee_angle}°
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
                   <div style={{ padding: "12px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "6px" }}>
                     <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Run-Up Momentum</div>
                     <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-h)", marginTop: "4px" }}>
@@ -838,6 +880,22 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
                       {currentAnalysis.performance.metrics.bowling_consistency}%
                     </div>
                   </div>
+                  {currentAnalysis.performance.metrics.front_knee_brace_angle && (
+                    <div style={{ padding: "12px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "6px" }}>
+                      <div style={{ fontSize: "11px", color: "var(--accent-dark)", textTransform: "uppercase", fontWeight: "700" }}>Front-Leg Brace</div>
+                      <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--accent-dark)", marginTop: "4px" }}>
+                        {currentAnalysis.performance.metrics.front_knee_brace_angle}°
+                      </div>
+                    </div>
+                  )}
+                  {currentAnalysis.performance.metrics.arm_extension_angle && (
+                    <div style={{ padding: "12px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "6px" }}>
+                      <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Arm Extension</div>
+                      <div className="mono-num" style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-h)", marginTop: "4px" }}>
+                        {currentAnalysis.performance.metrics.arm_extension_angle}°
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -847,7 +905,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
               {currentAnalysis.performance.strengths?.length > 0 && (
                 <div style={{ padding: "16px", background: "var(--accent-subtle)", border: "1px solid var(--accent-border)", borderRadius: "6px" }}>
                   <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", color: "var(--accent-dark)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Check size={14} /> Observed Strengths
+                    <Check size={14} /> Strengths
                   </div>
                   <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px", color: "var(--text)", lineHeight: "1.6" }}>
                     {currentAnalysis.performance.strengths.map((s, idx) => (
@@ -860,7 +918,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
               {currentAnalysis.performance.areas_for_improvement?.length > 0 && (
                 <div style={{ padding: "16px", background: "var(--surface-subtle)", border: "1px solid var(--border)", borderRadius: "6px" }}>
                   <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-h)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <AlertCircle size={14} /> Targeted Technical Corrections
+                    <AlertCircle size={14} /> Areas to Improve
                   </div>
                   <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px", color: "var(--text)", lineHeight: "1.6" }}>
                     {currentAnalysis.performance.areas_for_improvement.map((imp, idx) => (
@@ -873,7 +931,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
 
             {/* Scout Recommendation */}
             <div style={{ padding: "14px 16px", background: "var(--surface-subtle)", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "13px" }}>
-              <span style={{ fontWeight: "700", color: "var(--text-h)" }}>Scout Evaluation Note: </span>
+              <span style={{ fontWeight: "700", color: "var(--text-h)" }}>Recommendation: </span>
               <span style={{ color: "var(--text)" }}>{currentAnalysis.performance.recommendation}</span>
             </div>
           </motion.div>
