@@ -1,14 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import PerformanceHistoryTracker from "./PerformanceHistoryTracker";
 import {
   Search,
   Bookmark,
   FileText,
   X,
   ChevronRight,
+  ChevronDown,
   Filter,
   CheckCircle,
   MapPin,
+  Play,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 
 function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequireAuth }) {
@@ -18,7 +23,69 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
   const [showShortlistOnly, setShowShortlistOnly] = useState(false);
   const [selectedPlayerModal, setSelectedPlayerModal] = useState(null);
 
+  // Dropdown states for Role and Filter buttons
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const roleDropdownRef = useRef(null);
+  const filterDropdownRef = useRef(null);
+
+  // Click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(e.target)) {
+        setRoleDropdownOpen(false);
+      }
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target)) {
+        setFilterDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Video Library and History state for Scout viewing
+  const [playerVideos, setPlayerVideos] = useState([]);
+  const [playerHistory, setPlayerHistory] = useState({ batting: [], bowling: [] });
+  const [loadingVideos, setLoadingVideos] = useState(false);
+  const [videoFilter, setVideoFilter] = useState("all");
+  const [activeVideoModal, setActiveVideoModal] = useState(null);
+  const [activeAnalysisModal, setActiveAnalysisModal] = useState(null);
+
   const isScoutLoggedIn = currentUser && currentUser.role === "scout";
+
+  // Fetch player's videos and history whenever dossier modal opens
+  useEffect(() => {
+    if (!selectedPlayerModal?.id) {
+      setPlayerVideos([]);
+      setPlayerHistory({ batting: [], bowling: [] });
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingVideos(true);
+
+    Promise.all([
+      fetch(`http://127.0.0.1:5000/api/players/${selectedPlayerModal.id}/videos?scout_view=true`)
+        .then((res) => (res.ok ? res.json() : { videos: [] }))
+        .catch(() => ({ videos: [] })),
+      fetch(`http://127.0.0.1:5000/api/players/${selectedPlayerModal.id}/history`)
+        .then((res) => (res.ok ? res.json() : { history: { batting: [], bowling: [] } }))
+        .catch(() => ({ history: { batting: [], bowling: [] } })),
+    ]).then(([vData, hData]) => {
+      if (!isMounted) return;
+      setPlayerVideos(vData.videos || []);
+      setPlayerHistory(hData.history || { batting: [], bowling: [] });
+      setLoadingVideos(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedPlayerModal?.id]);
+
+  const filteredPlayerVideos = playerVideos.filter(
+    (v) => videoFilter === "all" || v.video_type === videoFilter
+  );
 
   const getStatusColor = (classification) => {
     if (classification === "Exceptional" || classification === "Highly Promising") return "var(--accent-dark)";
@@ -152,53 +219,204 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
           </span>
         </div>
 
-        {/* Quick Filter Chips */}
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", paddingTop: "8px", borderTop: "1px solid var(--border)" }}>
-          <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginRight: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
-            <Filter size={12} /> Role:
-          </span>
-          {["All", "Batsman", "Bowler", "All-Rounder"].map((role) => (
+        {/* Filter Dropdown Buttons */}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", paddingTop: "10px", borderTop: "1px solid var(--border)", flexWrap: "wrap" }}>
+          
+          {/* Roles Dropdown Button */}
+          <div ref={roleDropdownRef} style={{ position: "relative" }}>
             <button
-              key={role}
-              onClick={() => setRoleFilter(role)}
+              type="button"
+              onClick={() => {
+                setRoleDropdownOpen((prev) => !prev);
+                setFilterDropdownOpen(false);
+              }}
+              className="btn-secondary"
               style={{
-                border: `1px solid ${roleFilter === role ? "var(--accent)" : "var(--border)"}`,
-                background: roleFilter === role ? "var(--accent-subtle)" : "var(--surface)",
-                color: roleFilter === role ? "var(--accent-dark)" : "var(--text)",
-                padding: "4px 10px",
-                borderRadius: "4px",
                 fontSize: "12px",
+                padding: "6px 12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                background: roleFilter !== "All" ? "var(--accent-subtle)" : "var(--surface)",
+                borderColor: roleFilter !== "All" ? "var(--accent)" : "var(--border)",
+                color: roleFilter !== "All" ? "var(--accent-dark)" : "var(--text-h)",
                 fontWeight: "600",
-                cursor: "pointer",
-                transition: "all 0.15s ease",
               }}
             >
-              {role === "All" ? "All Roles" : role}
+              <span>Roles{roleFilter !== "All" ? `: ${roleFilter}` : ""}</span>
+              <ChevronDown
+                size={14}
+                style={{
+                  transition: "transform 0.15s ease",
+                  transform: roleDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                }}
+              />
             </button>
-          ))}
 
-          <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 4px 0 12px" }}>
-            Threshold:
-          </span>
-          {["All", "70", "80", "90"].map((sc) => (
+            {roleDropdownOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  minWidth: "160px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "6px",
+                  boxShadow: "var(--shadow-lg)",
+                  zIndex: 50,
+                  padding: "4px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px",
+                }}
+              >
+                {[
+                  { value: "All", label: "All Roles" },
+                  { value: "Batsman", label: "Batsman" },
+                  { value: "Bowler", label: "Bowler" },
+                  { value: "All-Rounder", label: "All-Rounder" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setRoleFilter(opt.value);
+                      setRoleDropdownOpen(false);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      width: "100%",
+                      padding: "8px 12px",
+                      fontSize: "12px",
+                      fontWeight: roleFilter === opt.value ? "700" : "500",
+                      color: roleFilter === opt.value ? "var(--accent-dark)" : "var(--text)",
+                      background: roleFilter === opt.value ? "var(--accent-subtle)" : "transparent",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span>{opt.label}</span>
+                    {roleFilter === opt.value && <Check size={13} color="var(--accent-dark)" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Filter Dropdown Button (changed from Threshold) */}
+          <div ref={filterDropdownRef} style={{ position: "relative" }}>
             <button
-              key={sc}
-              onClick={() => setMinScoreFilter(sc)}
+              type="button"
+              onClick={() => {
+                setFilterDropdownOpen((prev) => !prev);
+                setRoleDropdownOpen(false);
+              }}
+              className="btn-secondary"
               style={{
-                border: `1px solid ${minScoreFilter === sc ? "var(--accent)" : "var(--border)"}`,
-                background: minScoreFilter === sc ? "var(--accent-subtle)" : "var(--surface)",
-                color: minScoreFilter === sc ? "var(--accent-dark)" : "var(--text)",
-                padding: "4px 10px",
-                borderRadius: "4px",
                 fontSize: "12px",
+                padding: "6px 12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                background: minScoreFilter !== "All" ? "var(--accent-subtle)" : "var(--surface)",
+                borderColor: minScoreFilter !== "All" ? "var(--accent)" : "var(--border)",
+                color: minScoreFilter !== "All" ? "var(--accent-dark)" : "var(--text-h)",
                 fontWeight: "600",
-                cursor: "pointer",
-                transition: "all 0.15s ease",
               }}
             >
-              {sc === "All" ? "Any Score" : `${sc}+ Index`}
+              <Filter size={12} />
+              <span>Filter{minScoreFilter !== "All" ? `: ${minScoreFilter}+ Index` : ""}</span>
+              <ChevronDown
+                size={14}
+                style={{
+                  transition: "transform 0.15s ease",
+                  transform: filterDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                }}
+              />
             </button>
-          ))}
+
+            {filterDropdownOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  minWidth: "160px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "6px",
+                  boxShadow: "var(--shadow-lg)",
+                  zIndex: 50,
+                  padding: "4px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px",
+                }}
+              >
+                {[
+                  { value: "All", label: "Any Score" },
+                  { value: "70", label: "70+ Index" },
+                  { value: "80", label: "80+ Index" },
+                  { value: "90", label: "90+ Index" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setMinScoreFilter(opt.value);
+                      setFilterDropdownOpen(false);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      width: "100%",
+                      padding: "8px 12px",
+                      fontSize: "12px",
+                      fontWeight: minScoreFilter === opt.value ? "700" : "500",
+                      color: minScoreFilter === opt.value ? "var(--accent-dark)" : "var(--text)",
+                      background: minScoreFilter === opt.value ? "var(--accent-subtle)" : "transparent",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span>{opt.label}</span>
+                    {minScoreFilter === opt.value && <Check size={13} color="var(--accent-dark)" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Reset Filters chip if active */}
+          {(roleFilter !== "All" || minScoreFilter !== "All") && (
+            <button
+              type="button"
+              onClick={() => {
+                setRoleFilter("All");
+                setMinScoreFilter("All");
+              }}
+              style={{
+                fontSize: "11px",
+                fontWeight: "600",
+                color: "var(--text-muted)",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px 8px",
+                textDecoration: "underline",
+              }}
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -338,13 +556,6 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
                       </div>
                     </div>
                   </div>
-
-                  {/* Scout Highlights */}
-                  {player.highlights && (
-                    <p style={{ fontSize: "12px", color: "var(--text)", marginBottom: "16px", lineHeight: "1.5" }}>
-                      {player.highlights}
-                    </p>
-                  )}
                 </div>
 
                 {/* Inspect Action */}
@@ -398,7 +609,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
               transition={{ duration: 0.2 }}
               className="sports-card"
               style={{
-                maxWidth: "540px",
+                maxWidth: "660px",
                 width: "100%",
                 padding: "28px",
                 maxHeight: "88vh",
@@ -434,7 +645,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
                   border: "1px solid var(--border)",
                   borderRadius: "6px",
                   padding: "16px",
-                  marginBottom: "20px",
+                  marginBottom: "14px",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
@@ -442,7 +653,7 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
               >
                 <div>
                   <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase" }}>
-                    Overall Score
+                    Current Overall Score
                   </div>
                   <div className="mono-num" style={{ fontSize: "32px", fontWeight: "900", color: "var(--text-h)" }}>
                     {selectedPlayerModal.overallScore ? `${selectedPlayerModal.overallScore}` : "Pending"}
@@ -464,6 +675,174 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
                   >
                     {selectedPlayerModal.classification}
                   </span>
+                )}
+              </div>
+
+              {/* Component Breakdown (Batting & Bowling Current Scores) */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "20px" }}>
+                <div style={{ padding: "10px 14px", background: "var(--surface-subtle)", border: "1px solid var(--border)", borderRadius: "6px" }}>
+                  <div style={{ fontSize: "10px", color: "var(--accent-dark)", fontWeight: "700", textTransform: "uppercase" }}>
+                    Current Batting
+                  </div>
+                  <div className="mono-num" style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-h)", marginTop: "2px" }}>
+                    {selectedPlayerModal.battingScore ? `${selectedPlayerModal.battingScore}` : "—"}
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "500" }}> / 100</span>
+                  </div>
+                </div>
+
+                <div style={{ padding: "10px 14px", background: "var(--surface-subtle)", border: "1px solid var(--border)", borderRadius: "6px" }}>
+                  <div style={{ fontSize: "10px", color: "var(--text-h)", fontWeight: "700", textTransform: "uppercase" }}>
+                    Current Bowling
+                  </div>
+                  <div className="mono-num" style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-h)", marginTop: "2px" }}>
+                    {selectedPlayerModal.bowlingScore ? `${selectedPlayerModal.bowlingScore}` : "—"}
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "500" }}> / 100</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* PERFORMANCE HISTORY TRACKER */}
+              <PerformanceHistoryTracker
+                history={playerHistory}
+                compact={true}
+                onSelectSession={(videoId) => {
+                  const matched = playerVideos.find((v) => v.id === videoId);
+                  if (matched) {
+                    setActiveAnalysisModal(matched);
+                  } else if (videoId) {
+                    fetch(`http://127.0.0.1:5000/api/videos/${videoId}/analysis`)
+                      .then((r) => r.json())
+                      .then((data) => {
+                        if (data.analysis) {
+                          setActiveAnalysisModal({
+                            id: videoId,
+                            score: data.analysis.score,
+                            classification: data.analysis.classification,
+                            video_type: data.analysis.video_type,
+                            analysis: data.analysis,
+                            filename: data.analysis.filename,
+                            date: data.analysis.date,
+                            duration_formatted: data.analysis.duration_formatted,
+                          });
+                        }
+                      })
+                      .catch(() => {});
+                  }
+                }}
+              />
+
+              {/* PERFORMANCE VIDEOS (Read-only for scouts) */}
+              <div style={{ marginBottom: "22px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+                  <div>
+                    <h3 style={{ fontSize: "13px", fontWeight: "800", color: "var(--text-h)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      Performance Videos ({filteredPlayerVideos.length})
+                    </h3>
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "1px" }}>
+                      Video recordings and technique evaluations made visible to scouts.
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "4px", background: "var(--surface-subtle)", padding: "2px", borderRadius: "5px", border: "1px solid var(--border)" }}>
+                    {["all", "batting", "bowling"].map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setVideoFilter(f)}
+                        style={{
+                          padding: "3px 8px",
+                          borderRadius: "3px",
+                          fontSize: "11px",
+                          fontWeight: "600",
+                          border: "none",
+                          cursor: "pointer",
+                          textTransform: "capitalize",
+                          background: videoFilter === f ? "var(--surface)" : "transparent",
+                          color: videoFilter === f ? "var(--text-h)" : "var(--text-muted)",
+                        }}
+                      >
+                        {f === "all" ? "All" : f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {loadingVideos ? (
+                  <div style={{ padding: "20px", textAlign: "center", fontSize: "12px", color: "var(--text-muted)", background: "var(--surface-subtle)", borderRadius: "6px", border: "1px solid var(--border)" }}>
+                    Loading performance videos...
+                  </div>
+                ) : filteredPlayerVideos.length === 0 ? (
+                  <div style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)", fontSize: "12px", background: "var(--surface-subtle)", borderRadius: "6px", border: "1px solid var(--border)" }}>
+                    No videos published to scouts for this athlete.
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "10px" }}>
+                    {filteredPlayerVideos.map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          background: "var(--surface-subtle)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          padding: "12px 14px",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                fontWeight: "700",
+                                textTransform: "uppercase",
+                                padding: "2px 6px",
+                                borderRadius: "3px",
+                                background: item.video_type === "batting" ? "var(--accent-subtle)" : "var(--surface)",
+                                color: item.video_type === "batting" ? "var(--accent-dark)" : "var(--text-h)",
+                                border: "1px solid var(--border)",
+                              }}
+                            >
+                              {item.video_type}
+                            </span>
+                            <div style={{ textAlign: "right" }}>
+                              <span className="mono-num" style={{ fontSize: "17px", fontWeight: "800", color: "var(--text-h)" }}>
+                                {item.score || "—"}
+                              </span>
+                              <span style={{ fontSize: "10px", color: "var(--text-muted)" }}> / 100</span>
+                              {item.classification && (
+                                <div style={{ fontSize: "10px", color: getStatusColor(item.classification), fontWeight: "600", marginTop: "1px" }}>
+                                  {item.classification}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "10px" }}>
+                            <div>{item.date || item.uploaded_at}</div>
+                            {item.duration_formatted && <div>Duration: {item.duration_formatted}</div>}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", paddingTop: "8px", borderTop: "1px solid var(--border)" }}>
+                          <button
+                            onClick={() => setActiveVideoModal(item)}
+                            className="btn-primary"
+                            style={{ fontSize: "11px", padding: "5px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}
+                          >
+                            <Play size={11} /> Watch
+                          </button>
+                          <button
+                            onClick={() => setActiveAnalysisModal(item)}
+                            className="btn-secondary"
+                            style={{ fontSize: "11px", padding: "5px 8px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                          >
+                            Analysis
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -520,6 +899,343 @@ function ScoutPortal({ players, shortlist, toggleShortlist, currentUser, onRequi
                 <Bookmark size={15} />
                 {shortlist.includes(selectedPlayerModal.id) ? "Remove from Shortlist" : "Add to Shortlist"}
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* HTML5 VIDEO PLAYER MODAL FOR SCOUTS */}
+      <AnimatePresence>
+        {activeVideoModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(9, 13, 22, 0.8)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+              zIndex: 1100,
+            }}
+            onClick={() => setActiveVideoModal(null)}
+          >
+            <motion.div
+              data-lenis-prevent="true"
+              initial={{ scale: 0.96, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 10 }}
+              className="sports-card"
+              style={{
+                maxWidth: "720px",
+                width: "100%",
+                background: "var(--surface)",
+                overflow: "hidden",
+                boxShadow: "var(--shadow-lg)",
+                padding: 0,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)" }}>
+                <div>
+                  <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-h)", textTransform: "capitalize" }}>
+                    {activeVideoModal.video_type} Video Footage
+                  </h3>
+                  <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+                    Recorded: {activeVideoModal.date || activeVideoModal.uploaded_at}
+                    {activeVideoModal.duration_formatted ? ` • ${activeVideoModal.duration_formatted}` : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveVideoModal(null)}
+                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div style={{ background: "#000000", display: "flex", justifyContent: "center" }}>
+                <video
+                  controls
+                  autoPlay
+                  src={`http://127.0.0.1:5000/api/videos/${encodeURIComponent(activeVideoModal.filename)}`}
+                  style={{ width: "100%", maxHeight: "55vh" }}
+                />
+              </div>
+
+              <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                <div>
+                  <div className="mono-num" style={{ fontSize: "22px", fontWeight: "800", color: "var(--text-h)" }}>
+                    Score: {activeVideoModal.score || "—"} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>/ 100</span>
+                  </div>
+                  <div style={{ fontSize: "11px", color: getStatusColor(activeVideoModal.classification), fontWeight: "600" }}>
+                    {activeVideoModal.classification}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    const v = activeVideoModal;
+                    setActiveVideoModal(null);
+                    setActiveAnalysisModal(v);
+                  }}
+                  className="btn-secondary"
+                  style={{ fontSize: "12px", padding: "7px 14px" }}
+                >
+                  View Analysis
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* VIDEO-SPECIFIC ANALYSIS MODAL FOR SCOUTS */}
+      <AnimatePresence>
+        {activeAnalysisModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(9, 13, 22, 0.8)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+              zIndex: 1100,
+            }}
+            onClick={() => setActiveAnalysisModal(null)}
+          >
+            <motion.div
+              data-lenis-prevent="true"
+              initial={{ scale: 0.96, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 10 }}
+              className="sports-card"
+              style={{
+                maxWidth: "600px",
+                width: "100%",
+                padding: "24px",
+                maxHeight: "85vh",
+                overflowY: "auto",
+                background: "var(--surface)",
+                boxShadow: "var(--shadow-lg)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px", borderBottom: "1px solid var(--border)", paddingBottom: "12px" }}>
+                <div>
+                  <h3 style={{ fontSize: "18px", fontWeight: "800", color: "var(--text-h)" }}>
+                    {activeAnalysisModal.video_type === "batting" ? "Batting Video Analysis" : "Bowling Video Analysis"}
+                  </h3>
+                  <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+                    Recorded on {activeAnalysisModal.date || activeAnalysisModal.uploaded_at}
+                    {activeAnalysisModal.duration_formatted ? ` • ${activeAnalysisModal.duration_formatted}` : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveAnalysisModal(null)}
+                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Score header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "14px 18px",
+                  background: "var(--surface-subtle)",
+                  borderRadius: "6px",
+                  border: "1px solid var(--border)",
+                  marginBottom: "20px",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "10px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-muted)" }}>
+                    Video Evaluation Score
+                  </div>
+                  <div className="mono-num" style={{ fontSize: "36px", fontWeight: "900", color: "var(--text-h)", lineHeight: "1", marginTop: "4px" }}>
+                    {activeAnalysisModal.score} <span style={{ fontSize: "14px", color: "var(--text-muted)" }}>/ 100</span>
+                  </div>
+                </div>
+
+                <span
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    background: "var(--surface)",
+                    color: getStatusColor(activeAnalysisModal.classification),
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  {activeAnalysisModal.classification}
+                </span>
+              </div>
+
+              {/* Metrics Breakdown */}
+              {activeAnalysisModal.analysis?.metrics && (
+                <div style={{ marginBottom: "20px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
+                    Mechanical Breakdown
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px" }}>
+                    {activeAnalysisModal.video_type === "batting" ? (
+                      <>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Stance Stability</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.stance_stability || "—"} / 100
+                          </div>
+                        </div>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Shot Movement</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.shot_movement || "—"} / 100
+                          </div>
+                        </div>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Consistency</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.batting_consistency || "—"}%
+                          </div>
+                        </div>
+                        {activeAnalysisModal.analysis.metrics.lead_elbow_angle && (
+                          <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: "10px", color: "var(--accent-dark)", textTransform: "uppercase", fontWeight: "700" }}>Lead Elbow</div>
+                            <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--accent-dark)", marginTop: "2px" }}>
+                              {activeAnalysisModal.analysis.metrics.lead_elbow_angle}°
+                            </div>
+                          </div>
+                        )}
+                        {activeAnalysisModal.analysis.metrics.front_knee_angle && (
+                          <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Front Knee</div>
+                            <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                              {activeAnalysisModal.analysis.metrics.front_knee_angle}°
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Run-Up Momentum</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.runup_momentum || "—"} / 100
+                          </div>
+                        </div>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Release Stability</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.release_stability || "—"} / 100
+                          </div>
+                        </div>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Consistency</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.bowling_consistency || "—"}%
+                          </div>
+                        </div>
+                        {activeAnalysisModal.analysis.metrics.front_knee_brace_angle && (
+                          <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: "10px", color: "var(--accent-dark)", textTransform: "uppercase", fontWeight: "700" }}>Front-Leg Brace</div>
+                            <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--accent-dark)", marginTop: "2px" }}>
+                              {activeAnalysisModal.analysis.metrics.front_knee_brace_angle}°
+                            </div>
+                          </div>
+                        )}
+                        {activeAnalysisModal.analysis.metrics.arm_extension_angle && (
+                          <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Arm Extension</div>
+                            <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                              {activeAnalysisModal.analysis.metrics.arm_extension_angle}°
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Strengths & Improvements */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "18px" }}>
+                {activeAnalysisModal.analysis?.strengths?.length > 0 && (
+                  <div style={{ padding: "12px 14px", background: "var(--accent-subtle)", borderRadius: "6px", border: "1px solid var(--accent-border)" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--accent-dark)", marginBottom: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <Check size={13} /> Strengths
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "12px", color: "var(--text)", lineHeight: "1.5" }}>
+                      {activeAnalysisModal.analysis.strengths.map((s, idx) => (
+                        <li key={idx}>{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {activeAnalysisModal.analysis?.areas_for_improvement?.length > 0 && (
+                  <div style={{ padding: "12px 14px", background: "var(--surface-subtle)", borderRadius: "6px", border: "1px solid var(--border)" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-h)", marginBottom: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <AlertCircle size={13} /> Areas to Improve
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "12px", color: "var(--text)", lineHeight: "1.5" }}>
+                      {activeAnalysisModal.analysis.areas_for_improvement.map((imp, idx) => (
+                        <li key={idx}>{imp}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Recommendation */}
+              {activeAnalysisModal.analysis?.recommendation && (
+                <div style={{ padding: "12px 14px", background: "var(--surface-subtle)", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "12px", marginBottom: "20px" }}>
+                  <span style={{ fontWeight: "700", color: "var(--text-h)" }}>Recommendation: </span>
+                  <span style={{ color: "var(--text)" }}>{activeAnalysisModal.analysis.recommendation}</span>
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                <button
+                  onClick={() => {
+                    const v = activeAnalysisModal;
+                    setActiveAnalysisModal(null);
+                    setActiveVideoModal(v);
+                  }}
+                  className="btn-primary"
+                  style={{ fontSize: "12px", padding: "6px 14px", display: "flex", alignItems: "center", gap: "4px" }}
+                >
+                  <Play size={12} /> Watch Video
+                </button>
+                <button
+                  onClick={() => setActiveAnalysisModal(null)}
+                  className="btn-secondary"
+                  style={{ fontSize: "12px", padding: "6px 14px" }}
+                >
+                  Close
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

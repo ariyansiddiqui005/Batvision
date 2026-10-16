@@ -178,13 +178,35 @@ def init_db():
                 schema_sql = f.read()
 
             cursor = conn.cursor()
+            # Check if performance_scores is already seeded to avoid duplicate seed inserts
+            already_seeded = False
+            try:
+                cursor.execute("SELECT count(*) FROM performance_scores")
+                row = cursor.fetchone()
+                if row and row[0] > 0:
+                    already_seeded = True
+            except Exception:
+                pass
+
             for statement in schema_sql.split(";"):
                 stmt = statement.strip()
                 if stmt:
+                    # Do not re-run seed INSERT statements if database already has data
+                    if already_seeded and stmt.upper().startswith("INSERT INTO"):
+                        continue
                     try:
                         cursor.execute(stmt)
                     except Error as err:
                         pass
+            # Ensure visibility column exists on videos table
+            try:
+                cursor.execute("SHOW COLUMNS FROM videos LIKE 'visibility'")
+                if not cursor.fetchone():
+                    cursor.execute("ALTER TABLE videos ADD COLUMN visibility ENUM('scouts', 'private') DEFAULT 'scouts'")
+                    conn.commit()
+            except Exception:
+                pass
+
             conn.commit()
             cursor.close()
             print("[BatVision DB] Database initialized with schema.sql successfully!")
@@ -271,6 +293,281 @@ def save_video_and_score(player_id, filename, analysis_type, duration, fps, perf
     return 1
 
 
+def get_player_videos(player_id, scout_view=False):
+    """
+    Retrieves all performance videos belonging to a player, along with each video's
+    individual score, classification, duration, upload date, and metrics.
+    If scout_view=True, filters out private videos.
+    """
+    conn = get_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Check if visibility column exists
+            try:
+                cursor.execute("SHOW COLUMNS FROM videos LIKE 'visibility'")
+                has_visibility = cursor.fetchone() is not None
+            except Exception:
+                has_visibility = False
+
+            query = """
+                SELECT 
+                    v.id AS video_id,
+                    v.player_id,
+                    v.filename,
+                    v.video_type,
+                    v.duration_seconds,
+                    v.fps,
+                    v.uploaded_at,
+            """
+            if has_visibility:
+                query += " v.visibility, "
+            else:
+                query += " 'scouts' AS visibility, "
+
+            query += """
+                    ps.id AS score_id,
+                    ps.score,
+                    ps.classification,
+                    ps.metrics_json,
+                    ps.strengths_json,
+                    ps.improvements_json,
+                    ps.recommendation,
+                    ps.created_at AS analysis_created_at
+                FROM videos v
+                LEFT JOIN performance_scores ps ON ps.video_id = v.id
+                WHERE v.player_id = %s
+            """
+            if scout_view and has_visibility:
+                query += " AND (v.visibility = 'scouts' OR v.visibility IS NULL) "
+
+            query += " ORDER BY v.uploaded_at DESC "
+
+            cursor.execute(query, (player_id,))
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+
+            videos = []
+            for r in rows:
+                metrics = {}
+                strengths = []
+                improvements = []
+                try:
+                    if r.get("metrics_json"):
+                        metrics = json.loads(r["metrics_json"])
+                    if r.get("strengths_json"):
+                        strengths = json.loads(r["strengths_json"])
+                    if r.get("improvements_json"):
+                        improvements = json.loads(r["improvements_json"])
+                except Exception:
+                    pass
+
+                uploaded_at_str = r["uploaded_at"].strftime("%d %b %Y, %I:%M %p") if r.get("uploaded_at") else ""
+                date_short = r["uploaded_at"].strftime("%d %b %Y") if r.get("uploaded_at") else ""
+
+                duration_val = float(r["duration_seconds"] or 0)
+                mins = int(duration_val // 60)
+                secs = int(duration_val % 60)
+                formatted_duration = f"{mins}:{secs:02d}"
+
+                videos.append({
+                    "id": r["video_id"],
+                    "player_id": r["player_id"],
+                    "filename": r["filename"],
+                    "video_type": r["video_type"],
+                    "duration_seconds": round(duration_val, 1),
+                    "duration_formatted": formatted_duration,
+                    "fps": round(float(r["fps"] or 0), 1),
+                    "uploaded_at": uploaded_at_str,
+                    "date": date_short,
+                    "visibility": r.get("visibility") or "scouts",
+                    "score": r["score"],
+                    "classification": r["classification"] or get_classification(r["score"]),
+                    "analysis": {
+                        "score": r["score"],
+                        "classification": r["classification"] or get_classification(r["score"]),
+                        "metrics": metrics,
+                        "strengths": strengths,
+                        "areas_for_improvement": improvements,
+                        "recommendation": r.get("recommendation", "")
+                    } if r["score"] is not None else None
+                })
+            return videos
+        except Error as e:
+            print(f"[BatVision DB] Error getting player videos: {e}")
+
+    # Fallback to in-memory store
+    videos = []
+    for s in reversed(IN_MEMORY_SCORES):
+        if s.get("player_id") == int(player_id):
+            videos.append({
+                "id": s.get("video_id", 1),
+                "player_id": int(player_id),
+                "filename": f"{s.get('analysis_type', 'batting')}_demo.mp4",
+                "video_type": s.get("analysis_type", "batting"),
+                "duration_seconds": 10.0,
+                "duration_formatted": "0:10",
+                "fps": 30.0,
+                "uploaded_at": "19 Sep 2026",
+                "date": "19 Sep 2026",
+                "visibility": "scouts",
+                "score": s.get("score"),
+                "classification": s.get("classification"),
+                "analysis": s
+            })
+    return videos
+
+
+def get_player_performance_history(player_id):
+    """
+    Returns the chronological progression of scores for Batting and Bowling.
+    e.g. {"batting": [{"score": 76, "date": "18 Jun 2026", "video_id": 1}], "bowling": [...]}
+    """
+    conn = get_connection()
+    history = {"batting": [], "bowling": []}
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT 
+                    ps.score, 
+                    ps.classification, 
+                    ps.analysis_type, 
+                    ps.created_at,
+                    ps.video_id,
+                    v.duration_seconds
+                FROM performance_scores ps
+                LEFT JOIN videos v ON v.id = ps.video_id
+                WHERE ps.player_id = %s
+                  AND (ps.video_id IS NOT NULL OR NOT EXISTS (SELECT 1 FROM videos WHERE player_id = %s))
+                ORDER BY ps.created_at ASC
+            """, (player_id, player_id))
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+
+            for r in rows:
+                t = r["analysis_type"]
+                if t in history:
+                    dt = r["created_at"].strftime("%d %b %Y") if r.get("created_at") else ""
+                    history[t].append({
+                        "score": r["score"],
+                        "classification": r["classification"],
+                        "date": dt,
+                        "video_id": r.get("video_id")
+                    })
+            return history
+        except Error as e:
+            print(f"[BatVision DB] Error getting performance history: {e}")
+
+    # In-memory fallback
+    for s in IN_MEMORY_SCORES:
+        if s.get("player_id") == int(player_id):
+            t = s.get("analysis_type")
+            if t in history:
+                history[t].append({
+                    "score": s["score"],
+                    "classification": s.get("classification"),
+                    "date": "Sep 2026",
+                    "video_id": s.get("video_id")
+                })
+    return history
+
+
+def get_video_analysis(video_id):
+    """Retrieves the specific analysis record tied to a video ID."""
+    conn = get_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT 
+                    ps.id AS score_id,
+                    ps.player_id,
+                    ps.video_id,
+                    ps.analysis_type,
+                    ps.score,
+                    ps.classification,
+                    ps.metrics_json,
+                    ps.strengths_json,
+                    ps.improvements_json,
+                    ps.recommendation,
+                    ps.created_at,
+                    v.filename,
+                    v.duration_seconds,
+                    v.fps,
+                    v.uploaded_at
+                FROM performance_scores ps
+                LEFT JOIN videos v ON v.id = ps.video_id
+                WHERE ps.video_id = %s OR ps.id = %s
+                LIMIT 1
+            """, (video_id, video_id))
+            r = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            if r:
+                metrics, strengths, improvements = {}, [], []
+                try:
+                    if r.get("metrics_json"):
+                        metrics = json.loads(r["metrics_json"])
+                    if r.get("strengths_json"):
+                        strengths = json.loads(r["strengths_json"])
+                    if r.get("improvements_json"):
+                        improvements = json.loads(r["improvements_json"])
+                except Exception:
+                    pass
+
+                uploaded_at_str = r["created_at"].strftime("%d %b %Y, %I:%M %p") if r.get("created_at") else ""
+                date_short = r["created_at"].strftime("%d %b %Y") if r.get("created_at") else ""
+
+                duration_val = float(r["duration_seconds"] or 0)
+                mins = int(duration_val // 60)
+                secs = int(duration_val % 60)
+
+                return {
+                    "video_id": r["video_id"],
+                    "score_id": r["score_id"],
+                    "player_id": r["player_id"],
+                    "filename": r.get("filename"),
+                    "video_type": r["analysis_type"],
+                    "analysis_type": r["analysis_type"],
+                    "score": r["score"],
+                    "classification": r["classification"],
+                    "duration_seconds": round(duration_val, 1),
+                    "duration_formatted": f"{mins}:{secs:02d}",
+                    "fps": round(float(r.get("fps") or 0), 1),
+                    "uploaded_at": uploaded_at_str,
+                    "date": date_short,
+                    "metrics": metrics,
+                    "strengths": strengths,
+                    "areas_for_improvement": improvements,
+                    "recommendation": r.get("recommendation", "")
+                }
+        except Error as e:
+            print(f"[BatVision DB] Error getting video analysis: {e}")
+    return None
+
+
+def update_video_visibility(video_id, player_id, visibility):
+    """Updates the visibility of a video ('scouts' or 'private')."""
+    if visibility not in ["scouts", "private"]:
+        visibility = "scouts"
+    conn = get_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE videos SET visibility = %s WHERE id = %s AND player_id = %s", (visibility, video_id, player_id))
+            conn.commit()
+            updated = cursor.rowcount > 0
+            cursor.close()
+            conn.close()
+            return updated
+        except Error as e:
+            print(f"[BatVision DB] Error updating visibility: {e}")
+    return False
+
+
 def get_players_feed():
     """Retrieves all players with their latest Batting and Bowling scores."""
     conn = get_connection()
@@ -288,16 +585,18 @@ def get_players_feed():
                     SELECT score, classification, metrics_json, strengths_json, improvements_json, recommendation
                     FROM performance_scores
                     WHERE player_id = %s AND analysis_type = 'batting'
+                      AND (video_id IS NOT NULL OR NOT EXISTS (SELECT 1 FROM videos WHERE player_id = %s AND video_type = 'batting'))
                     ORDER BY created_at DESC LIMIT 1
-                """, (player_id,))
+                """, (player_id, player_id))
                 bat_row = cursor.fetchone()
 
                 cursor.execute("""
                     SELECT score, classification, metrics_json, strengths_json, improvements_json, recommendation
                     FROM performance_scores
                     WHERE player_id = %s AND analysis_type = 'bowling'
+                      AND (video_id IS NOT NULL OR NOT EXISTS (SELECT 1 FROM videos WHERE player_id = %s AND video_type = 'bowling'))
                     ORDER BY created_at DESC LIMIT 1
-                """, (player_id,))
+                """, (player_id, player_id))
                 bowl_row = cursor.fetchone()
 
                 batting_score = bat_row["score"] if bat_row else None

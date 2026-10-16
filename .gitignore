@@ -7,3 +7,18 @@ processed/
 *.pt
 frontend/dist/
 dist/
+
+# Black book temporary scripts, reference files, and test docx
+zenthcare*.docx
+test*.docx
+extracted_media/
+skills/
+save_active_doc.ps1
+add_chapter_*.py
+build_*_black_book.py
+find_gantt_image.py
+gantt_chart.png
+
+# Microsoft Word temporary files
+~$*.docx
+* (updated).docx

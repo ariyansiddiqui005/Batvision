@@ -1,5 +1,5 @@
 from video_analysis import analyze_video
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import check_password_hash
 import os
@@ -229,6 +229,48 @@ def upload_video():
         "saved_to_db": db_saved,
         "analysis": analysis
     })
+
+
+@app.route("/api/videos/<path:filename>", methods=["GET"])
+def serve_video(filename):
+    """Streams or serves uploaded cricket videos from the uploads directory."""
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+
+@app.route("/api/players/<int:player_id>/videos", methods=["GET"])
+def get_player_videos(player_id):
+    """Retrieves all performance videos belonging to a player."""
+    scout_view = request.args.get("scout_view", "false").lower() == "true"
+    videos = db.get_player_videos(player_id, scout_view=scout_view)
+    return jsonify({"videos": videos, "player_id": player_id, "count": len(videos)})
+
+
+@app.route("/api/players/<int:player_id>/history", methods=["GET"])
+def get_player_history(player_id):
+    """Retrieves performance history (score progressions) for a player."""
+    history = db.get_player_performance_history(player_id)
+    return jsonify({"history": history, "player_id": player_id})
+
+
+@app.route("/api/videos/<int:video_id>/analysis", methods=["GET"])
+def get_video_analysis(video_id):
+    """Retrieves specific analysis report for a video."""
+    analysis = db.get_video_analysis(video_id)
+    if not analysis:
+        return jsonify({"error": "Video analysis not found"}), 404
+    return jsonify({"analysis": analysis})
+
+
+@app.route("/api/videos/<int:video_id>/visibility", methods=["POST"])
+def set_video_visibility(video_id):
+    """Updates visibility setting of a video ('scouts' or 'private')."""
+    data = request.json or {}
+    player_id = data.get("player_id")
+    visibility = data.get("visibility", "scouts")
+    if not player_id:
+        return jsonify({"error": "player_id is required"}), 400
+    success = db.update_video_visibility(video_id, player_id, visibility)
+    return jsonify({"success": success, "video_id": video_id, "visibility": visibility})
 
 
 if __name__ == "__main__":

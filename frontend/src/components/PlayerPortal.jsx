@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import PerformanceHistoryTracker from "./PerformanceHistoryTracker";
 import {
   Upload,
   CheckCircle2,
@@ -8,6 +9,12 @@ import {
   FileVideo,
   AlertCircle,
   Check,
+  Play,
+  X,
+  Film,
+  Calendar,
+  Lock,
+  Globe,
 } from "lucide-react";
 
 function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAnalyzed, currentUser, onRequireAuth }) {
@@ -19,6 +26,14 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState(playerProfile);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Performance Video Library & History state
+  const [videoList, setVideoList] = useState([]);
+  const [performanceHistory, setPerformanceHistory] = useState({ batting: [], bowling: [] });
+  const [videoFilter, setVideoFilter] = useState("all");
+  const [videoSort, setVideoSort] = useState("newest");
+  const [activeVideoModal, setActiveVideoModal] = useState(null);
+  const [activeAnalysisModal, setActiveAnalysisModal] = useState(null);
 
   const isPlayerLoggedIn = currentUser && currentUser.role === "player";
 
@@ -43,6 +58,59 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
       handleVideoFile(e.dataTransfer.files[0]);
     }
   };
+
+  const fetchVideosAndHistory = async () => {
+    const resolvedId = playerProfile.id && String(playerProfile.id) !== "p-current" ? playerProfile.id : currentUser?.id;
+    if (!resolvedId) return;
+    try {
+      const [vRes, hRes] = await Promise.all([
+        fetch(`http://127.0.0.1:5000/api/players/${resolvedId}/videos`),
+        fetch(`http://127.0.0.1:5000/api/players/${resolvedId}/history`),
+      ]);
+      const vData = await vRes.json();
+      const hData = await hRes.json();
+      if (vData && Array.isArray(vData.videos)) {
+        setVideoList(vData.videos);
+      }
+      if (hData && hData.history) {
+        setPerformanceHistory(hData.history);
+      }
+    } catch {
+      // Backend offline or fallback
+    }
+  };
+
+  useEffect(() => {
+    fetchVideosAndHistory();
+  }, [playerProfile.id, currentUser?.id]);
+
+  const handleToggleVisibility = async (videoId, newVisibility) => {
+    const resolvedId = playerProfile.id && String(playerProfile.id) !== "p-current" ? playerProfile.id : currentUser?.id;
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/api/videos/${videoId}/visibility`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: resolvedId, visibility: newVisibility }),
+      });
+      if (res.ok) {
+        setVideoList((prev) =>
+          prev.map((v) => (v.id === videoId ? { ...v, visibility: newVisibility } : v))
+        );
+      }
+    } catch (e) {
+      console.log("Could not update visibility:", e);
+    }
+  };
+
+  const filteredVideos = videoList
+    .filter((v) => videoFilter === "all" || v.video_type === videoFilter)
+    .sort((a, b) => {
+      if (videoSort === "newest") {
+        return (b.id || 0) - (a.id || 0);
+      } else {
+        return (a.id || 0) - (b.id || 0);
+      }
+    });
 
   const uploadVideo = async () => {
     if (!isPlayerLoggedIn) {
@@ -83,6 +151,7 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
         if (data.analysis && data.analysis.performance) {
           onVideoAnalyzed(data.analysis_type, data.analysis.performance);
         }
+        fetchVideosAndHistory();
       } else {
         setMessage(data.error || "Analysis failed.");
       }
@@ -580,7 +649,200 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
             50% Combine Weight
           </div>
         </div>
+      </div>
 
+      {/* PERFORMANCE HISTORY TRACKER */}
+      <PerformanceHistoryTracker
+        history={performanceHistory}
+        onSelectSession={(videoId) => {
+          const matched = videoList.find((v) => v.id === videoId);
+          if (matched) {
+            setActiveAnalysisModal(matched);
+          } else if (videoId) {
+            fetch(`http://127.0.0.1:5000/api/videos/${videoId}/analysis`)
+              .then((r) => r.json())
+              .then((data) => {
+                if (data.analysis) {
+                  setActiveAnalysisModal({
+                    id: videoId,
+                    score: data.analysis.score,
+                    classification: data.analysis.classification,
+                    video_type: data.analysis.video_type,
+                    analysis: data.analysis,
+                    filename: data.analysis.filename,
+                    date: data.analysis.date,
+                    duration_formatted: data.analysis.duration_formatted,
+                  });
+                }
+              })
+              .catch(() => {});
+          }
+        }}
+      />
+
+      {/* PERFORMANCE VIDEOS LIBRARY */}
+      <div
+        className="sports-card"
+        style={{
+          padding: "24px",
+          marginBottom: "24px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
+          <div>
+            <h2 style={{ fontSize: "18px", fontWeight: "800", color: "var(--text-h)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Performance Videos
+            </h2>
+            <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "2px" }}>
+              Archive of uploaded videos and their individual technical evaluations.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            {/* Filter chips */}
+            <div style={{ display: "flex", gap: "4px", background: "var(--surface-subtle)", padding: "3px", borderRadius: "6px", border: "1px solid var(--border)" }}>
+              {["all", "batting", "bowling"].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setVideoFilter(f)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    border: "none",
+                    cursor: "pointer",
+                    textTransform: "capitalize",
+                    background: videoFilter === f ? "var(--surface)" : "transparent",
+                    color: videoFilter === f ? "var(--text-h)" : "var(--text-muted)",
+                    boxShadow: videoFilter === f ? "var(--shadow-sm)" : "none",
+                  }}
+                >
+                  {f === "all" ? "All Videos" : f}
+                </button>
+              ))}
+            </div>
+
+            {/* Sort button */}
+            <button
+              onClick={() => setVideoSort(videoSort === "newest" ? "oldest" : "newest")}
+              className="btn-secondary"
+              style={{ fontSize: "12px", padding: "5px 10px" }}
+            >
+              {videoSort === "newest" ? "Newest First" : "Oldest First"}
+            </button>
+          </div>
+        </div>
+
+        {filteredVideos.length === 0 ? (
+          <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px", background: "var(--surface-subtle)", borderRadius: "6px", border: "1px solid var(--border)" }}>
+            No performance videos uploaded yet. Use the upload tool below to analyze your technique.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
+            {filteredVideos.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "6px",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                    <div>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          padding: "3px 7px",
+                          borderRadius: "3px",
+                          background: item.video_type === "batting" ? "var(--accent-subtle)" : "var(--surface-subtle)",
+                          color: item.video_type === "batting" ? "var(--accent-dark)" : "var(--text-h)",
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        {item.video_type}
+                      </span>
+                    </div>
+
+                    <div style={{ textAlign: "right" }}>
+                      <div className="mono-num" style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-h)", lineHeight: "1" }}>
+                        {item.score || "—"}
+                        <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "500" }}> / 100</span>
+                      </div>
+                      <div style={{ fontSize: "10px", color: getStatusColor(item.classification), fontWeight: "600", marginTop: "2px" }}>
+                        {item.classification}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "12px" }}>
+                    <div>{item.date || item.uploaded_at}</div>
+                    {item.duration_formatted && (
+                      <div style={{ marginTop: "2px" }}>Duration: {item.duration_formatted}</div>
+                    )}
+                  </div>
+
+                  {/* Video Visibility Setting */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", padding: "6px 0", borderTop: "1px solid var(--border)" }}>
+                    <span>Visibility:</span>
+                    <button
+                      onClick={() => handleToggleVisibility(item.id, item.visibility === "private" ? "scouts" : "private")}
+                      title="Click to toggle visibility"
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        fontWeight: "600",
+                        color: item.visibility === "private" ? "var(--text-muted)" : "var(--accent-dark)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      {item.visibility === "private" ? (
+                        <>
+                          <Lock size={11} /> Private
+                        </>
+                      ) : (
+                        <>
+                          <Globe size={11} /> Visible to scouts
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "14px", paddingTop: "12px", borderTop: "1px solid var(--border)" }}>
+                  <button
+                    onClick={() => setActiveVideoModal(item)}
+                    className="btn-primary"
+                    style={{ fontSize: "12px", padding: "6px 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}
+                  >
+                    <Play size={12} /> Watch Video
+                  </button>
+
+                  <button
+                    onClick={() => setActiveAnalysisModal(item)}
+                    className="btn-secondary"
+                    style={{ fontSize: "12px", padding: "6px 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}
+                  >
+                    View Analysis
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* SECTION 3: VIDEO UPLOAD DIAGNOSTIC LAB */}
@@ -934,6 +1196,343 @@ function PlayerPortal({ playerProfile, setPlayerProfile, playerScores, onVideoAn
               <span style={{ fontWeight: "700", color: "var(--text-h)" }}>Recommendation: </span>
               <span style={{ color: "var(--text)" }}>{currentAnalysis.performance.recommendation}</span>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* NATIVE HTML5 VIDEO PLAYER MODAL */}
+      <AnimatePresence>
+        {activeVideoModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(9, 13, 22, 0.75)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+              zIndex: 1000,
+            }}
+            onClick={() => setActiveVideoModal(null)}
+          >
+            <motion.div
+              data-lenis-prevent="true"
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              style={{
+                maxWidth: "680px",
+                width: "100%",
+                background: "var(--surface)",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                overflow: "hidden",
+                boxShadow: "var(--shadow-lg)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", color: "var(--accent-dark)" }}>
+                    {activeVideoModal.video_type} Video
+                  </span>
+                  <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>•</span>
+                  <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                    {activeVideoModal.date || activeVideoModal.uploaded_at}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setActiveVideoModal(null)}
+                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div style={{ background: "#000000", display: "flex", justifyContent: "center" }}>
+                <video
+                  controls
+                  autoPlay
+                  src={`http://127.0.0.1:5000/api/videos/${encodeURIComponent(activeVideoModal.filename)}`}
+                  style={{ width: "100%", maxHeight: "55vh" }}
+                />
+              </div>
+
+              <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                <div>
+                  <div className="mono-num" style={{ fontSize: "22px", fontWeight: "800", color: "var(--text-h)" }}>
+                    Score: {activeVideoModal.score || "—"} <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>/ 100</span>
+                  </div>
+                  <div style={{ fontSize: "11px", color: getStatusColor(activeVideoModal.classification), fontWeight: "600" }}>
+                    {activeVideoModal.classification}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    const v = activeVideoModal;
+                    setActiveVideoModal(null);
+                    setActiveAnalysisModal(v);
+                  }}
+                  className="btn-secondary"
+                  style={{ fontSize: "12px", padding: "7px 14px" }}
+                >
+                  View Analysis
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* VIDEO-SPECIFIC ANALYSIS MODAL */}
+      <AnimatePresence>
+        {activeAnalysisModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(9, 13, 22, 0.75)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+              zIndex: 1000,
+            }}
+            onClick={() => setActiveAnalysisModal(null)}
+          >
+            <motion.div
+              data-lenis-prevent="true"
+              initial={{ scale: 0.96, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 10 }}
+              className="sports-card"
+              style={{
+                maxWidth: "600px",
+                width: "100%",
+                padding: "24px",
+                maxHeight: "85vh",
+                overflowY: "auto",
+                background: "var(--surface)",
+                boxShadow: "var(--shadow-lg)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px", borderBottom: "1px solid var(--border)", paddingBottom: "12px" }}>
+                <div>
+                  <h3 style={{ fontSize: "18px", fontWeight: "800", color: "var(--text-h)" }}>
+                    {activeAnalysisModal.video_type === "batting" ? "Batting Video Analysis" : "Bowling Video Analysis"}
+                  </h3>
+                  <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+                    Recorded on {activeAnalysisModal.date || activeAnalysisModal.uploaded_at}
+                    {activeAnalysisModal.duration_formatted ? ` • ${activeAnalysisModal.duration_formatted}` : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveAnalysisModal(null)}
+                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Score header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "14px 18px",
+                  background: "var(--surface-subtle)",
+                  borderRadius: "6px",
+                  border: "1px solid var(--border)",
+                  marginBottom: "20px",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "10px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-muted)" }}>
+                    Video Evaluation Score
+                  </div>
+                  <div className="mono-num" style={{ fontSize: "36px", fontWeight: "900", color: "var(--text-h)", lineHeight: "1", marginTop: "4px" }}>
+                    {activeAnalysisModal.score} <span style={{ fontSize: "14px", color: "var(--text-muted)" }}>/ 100</span>
+                  </div>
+                </div>
+
+                <span
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    background: "var(--surface)",
+                    color: getStatusColor(activeAnalysisModal.classification),
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  {activeAnalysisModal.classification}
+                </span>
+              </div>
+
+              {/* Metrics Breakdown */}
+              {activeAnalysisModal.analysis?.metrics && (
+                <div style={{ marginBottom: "20px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
+                    Mechanical Breakdown
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px" }}>
+                    {activeAnalysisModal.video_type === "batting" ? (
+                      <>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Stance Stability</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.stance_stability || "—"} / 100
+                          </div>
+                        </div>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Shot Movement</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.shot_movement || "—"} / 100
+                          </div>
+                        </div>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Consistency</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.batting_consistency || "—"}%
+                          </div>
+                        </div>
+                        {activeAnalysisModal.analysis.metrics.lead_elbow_angle && (
+                          <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: "10px", color: "var(--accent-dark)", textTransform: "uppercase", fontWeight: "700" }}>Lead Elbow</div>
+                            <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--accent-dark)", marginTop: "2px" }}>
+                              {activeAnalysisModal.analysis.metrics.lead_elbow_angle}°
+                            </div>
+                          </div>
+                        )}
+                        {activeAnalysisModal.analysis.metrics.front_knee_angle && (
+                          <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Front Knee</div>
+                            <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                              {activeAnalysisModal.analysis.metrics.front_knee_angle}°
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Run-Up Momentum</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.runup_momentum || "—"} / 100
+                          </div>
+                        </div>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Release Stability</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.release_stability || "—"} / 100
+                          </div>
+                        </div>
+                        <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Consistency</div>
+                          <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                            {activeAnalysisModal.analysis.metrics.bowling_consistency || "—"}%
+                          </div>
+                        </div>
+                        {activeAnalysisModal.analysis.metrics.front_knee_brace_angle && (
+                          <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: "10px", color: "var(--accent-dark)", textTransform: "uppercase", fontWeight: "700" }}>Front-Leg Brace</div>
+                            <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--accent-dark)", marginTop: "2px" }}>
+                              {activeAnalysisModal.analysis.metrics.front_knee_brace_angle}°
+                            </div>
+                          </div>
+                        )}
+                        {activeAnalysisModal.analysis.metrics.arm_extension_angle && (
+                          <div style={{ padding: "10px", background: "var(--surface-subtle)", borderRadius: "4px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Arm Extension</div>
+                            <div className="mono-num" style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-h)", marginTop: "2px" }}>
+                              {activeAnalysisModal.analysis.metrics.arm_extension_angle}°
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Strengths & Improvements */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "18px" }}>
+                {activeAnalysisModal.analysis?.strengths?.length > 0 && (
+                  <div style={{ padding: "12px 14px", background: "var(--accent-subtle)", borderRadius: "6px", border: "1px solid var(--accent-border)" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--accent-dark)", marginBottom: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <Check size={13} /> Strengths
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "12px", color: "var(--text)", lineHeight: "1.5" }}>
+                      {activeAnalysisModal.analysis.strengths.map((s, idx) => (
+                        <li key={idx}>{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {activeAnalysisModal.analysis?.areas_for_improvement?.length > 0 && (
+                  <div style={{ padding: "12px 14px", background: "var(--surface-subtle)", borderRadius: "6px", border: "1px solid var(--border)" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-h)", marginBottom: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <AlertCircle size={13} /> Areas to Improve
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "12px", color: "var(--text)", lineHeight: "1.5" }}>
+                      {activeAnalysisModal.analysis.areas_for_improvement.map((imp, idx) => (
+                        <li key={idx}>{imp}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Recommendation */}
+              {activeAnalysisModal.analysis?.recommendation && (
+                <div style={{ padding: "12px 14px", background: "var(--surface-subtle)", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "12px", marginBottom: "20px" }}>
+                  <span style={{ fontWeight: "700", color: "var(--text-h)" }}>Recommendation: </span>
+                  <span style={{ color: "var(--text)" }}>{activeAnalysisModal.analysis.recommendation}</span>
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                <button
+                  onClick={() => {
+                    const v = activeAnalysisModal;
+                    setActiveAnalysisModal(null);
+                    setActiveVideoModal(v);
+                  }}
+                  className="btn-primary"
+                  style={{ fontSize: "12px", padding: "6px 14px", display: "flex", alignItems: "center", gap: "4px" }}
+                >
+                  <Play size={12} /> Watch Video
+                </button>
+                <button
+                  onClick={() => setActiveAnalysisModal(null)}
+                  className="btn-secondary"
+                  style={{ fontSize: "12px", padding: "6px 14px" }}
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
